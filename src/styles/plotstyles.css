@@ -1,0 +1,17 @@
+.chart-series-line {
+	-fx-stroke-width: 1.75px;
+}
+.chart-symbol {
+	-fx-shape: null;
+	-fx-padding: 1.5px;
+	-fx-background-color: black;
+}
+.chart-symbol-dot {
+	-fx-background-color: #000;
+}
+.series1 {
+	-fx-background-color: #D85218;
+}
+.series2 {
+	-fx-background-color: #0071BC;
+}
