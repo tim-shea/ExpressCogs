@@ -86,12 +86,13 @@ public class Network {
         NeuronGroup output = NeuronGroup.createExcitatory("OUT", 200, 1.2e-9);
         network.addNeuronGroups(input, excitatory, inhibitory, output);
         
-        SynapseGroup inputToExcitatory = SynapseGroup.connectNeighborhood(input, excitatory, 0.1, 0.05, 0.5e-9, 1e-9);
-        //SynapseGroup inputToExcitatory = SynapseGroup.connectUniformRandom(input, excitatory, 0.1, 1e-9);
-        SynapseGroup excitatoryToExcitatory = SynapseGroup.connectNeighborhood(excitatory, excitatory, 0.1, 0.025, 0e-9, 1e-9);
-        SynapseGroup excitatoryToInhibitory = SynapseGroup.connectNeighborhood(excitatory, inhibitory, 0.1, 0.01, 0e-9, 1e-9);
-        SynapseGroup inhibitoryToExcitatory = SynapseGroup.connectNonNeighborhood(inhibitory, excitatory, 0.1, 0.025, 1e-9);
-        SynapseGroup excitatoryToOutput = SynapseGroup.connectNeighborhood(excitatory, output, 0.1, 0.01, 0e-9, 1e-9);
+        double conn = 0.1, minW = 0.1e-9, maxW = 1e-9;
+        SynapseGroup inputToExcitatory = SynapseGroup.connectNeighborhood(input, excitatory, conn, 0.05, minW, maxW);
+        //SynapseGroup inputToExcitatory = SynapseGroup.connectUniformRandom(input, excitatory, 0.1, maxW);
+        SynapseGroup excitatoryToExcitatory = SynapseGroup.connectNeighborhood(excitatory, excitatory, conn, 0.025, minW, maxW);
+        SynapseGroup excitatoryToInhibitory = SynapseGroup.connectNeighborhood(excitatory, inhibitory, conn, 0.01, minW, maxW);
+        SynapseGroup inhibitoryToExcitatory = SynapseGroup.connectNonNeighborhood(inhibitory, excitatory, conn, 0.025, minW, maxW);
+        SynapseGroup excitatoryToOutput = SynapseGroup.connectNeighborhood(excitatory, output, conn, 0.01, minW, maxW);
         network.addSynapseGroups(inputToExcitatory, excitatoryToExcitatory, excitatoryToInhibitory,
                 inhibitoryToExcitatory, excitatoryToOutput);
         

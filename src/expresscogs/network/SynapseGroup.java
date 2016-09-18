@@ -26,7 +26,7 @@ public class SynapseGroup {
         return connect(source, target, p, minWeight, maxWeight);
     }
     
-    public static SynapseGroup connectNonNeighborhood(NeuronGroup source, NeuronGroup target, double connectivity, double neighborhood, double strength) {
+    public static SynapseGroup connectNonNeighborhood(NeuronGroup source, NeuronGroup target, double connectivity, double neighborhood, double minW, double maxW) {
         SynapseGroup synapses = new SynapseGroup(source, target);
         DoubleMatrix d = source.getXPosition().repmat(1, target.getSize());
         d.subi(target.getXPosition().transpose().repmat(source.getSize(), 1));
@@ -39,7 +39,7 @@ public class SynapseGroup {
         p.diviColumnVector(p.rowMeans()).muli(connectivity);
         generateSynapses(synapses, p);
         pruneSelfSynapses(synapses);
-        randomizeWeights(synapses, 0e-9, strength);
+        randomizeWeights(synapses, minW, maxW);
         return synapses;
     }
     
