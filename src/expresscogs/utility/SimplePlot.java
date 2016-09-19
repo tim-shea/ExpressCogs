@@ -105,8 +105,8 @@ public class SimplePlot {
 
         public void setValues(DoubleMatrix values) {
             // DoubleMatrix scaledValues = values.sub(values.min());
-            // scaledValues.divi(scaledValues.max());
-            DoubleMatrix scaledValues = values.div(5);
+            DoubleMatrix scaledValues = values.div(values.max());
+            //DoubleMatrix scaledValues = values.div(5);
             resample(scaledValues, 10);
             //copyValues(scaledValues);
         }

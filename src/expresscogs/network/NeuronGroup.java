@@ -51,7 +51,7 @@ public class NeuronGroup {
     private double eL = -70.6e-3;
     private double vT = -50.4e-3;
     private double deltaT = 2e-3;
-    private double gEDecay = 0.9;
+    private double gEDecay = 0.925;
     private double gIDecay = 0.967;
     private double tauW = 144e-3, a = 4e-9, b = 0.08e-9, vR = eL; // regular
                                                                   // spiking

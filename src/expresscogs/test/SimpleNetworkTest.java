@@ -112,7 +112,7 @@ public class SimpleNetworkTest extends Application {
                         plot.setLimits(tPlot - 5, tPlot, 0, 5);
                     });
 
-                    firingRates.muli(0.999).addi(exc.getSpikes().reshape(50, 30));
+                    firingRates.muli(0.995).addi(exc.getSpikes().reshape(50, 30));
 
                     if (step % 100 == 0) {
                         Platform.runLater(() -> {
