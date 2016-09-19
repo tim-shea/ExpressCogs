@@ -12,13 +12,13 @@ import org.jblas.ranges.Range;
 public class Network {
     public static Network createReservoirNetwork() {
         Network network = new Network();
-        
+
         NeuronGroup input = NeuronGroup.createExcitatory("IN", 100);
         NeuronGroup excitatory = NeuronGroup.createExcitatory("EXC", 160);
         NeuronGroup inhibitory = NeuronGroup.createExcitatory("INH", 20);
         NeuronGroup output = NeuronGroup.createExcitatory("OUT", 100);
         network.addNeuronGroups(input, excitatory, inhibitory, output);
-        
+
         SynapseGroup inputToExcitatory = SynapseGroup.connectUniformRandom(input, excitatory, 0.1, 1e-9);
         SynapseGroup excitatoryToExcitatory = SynapseGroup.connectUniformRandom(excitatory, excitatory, 0.1, 1e-9);
         SynapseGroup excitatoryToInhibitory = SynapseGroup.connectUniformRandom(excitatory, inhibitory, 0.1, 1e-9);
@@ -26,50 +26,52 @@ public class Network {
         SynapseGroup excitatoryToOutput = SynapseGroup.connectUniformRandom(excitatory, output, 0.1, 1e-9);
         network.addSynapseGroups(inputToExcitatory, excitatoryToExcitatory, excitatoryToInhibitory,
                 inhibitoryToExcitatory, excitatoryToOutput);
-        
+
         return network;
     }
-    
+
     public static Network createMotorNetwork(int motorGroups, int neuronsPerGroup) {
         NeuronGroup excitatory = NeuronGroup.createExcitatory("EXC", motorGroups * neuronsPerGroup, 1.5e-9);
-        NeuronGroup inhibitory = NeuronGroup.createInhibitory("INH", motorGroups * neuronsPerGroup / 4,  new InputGenerator() {
-            int step = 0;
-            int group = 0;
-            
-            public DoubleMatrix generate(NeuronGroup neurons) {
-                DoubleMatrix i = DoubleMatrix.rand(neurons.getSize()).muli(1.2e-9);
-                if (step % 2000 == 0) {
-                    group = (int)(Math.random() * motorGroups);
-                    System.out.println("Step: " + step + " \tGroup: " + group);
-                } else if (step % 2000 < 500) {
-                    int a = group * neuronsPerGroup / 4;
-                    int b = (group + 1) * neuronsPerGroup / 4;
-                    Range r = new IntervalRange(a, b);
-                    DoubleMatrix stimulus = i.getRange(a, b);
-                    stimulus.addi(0.2e-9);
-                    i.put(r, new PointRange(0), stimulus);
-                }
-                step++;
-                return i;
-            }
-        });
-        
-        SynapseGroup excitatoryToInhibitory = SynapseGroup.connectGroups(excitatory, inhibitory, motorGroups, neuronsPerGroup, 0.25);
-        SynapseGroup inhibitoryToExcitatory = SynapseGroup.connectOpponentGroups(inhibitory, excitatory, motorGroups, neuronsPerGroup, 0.25);
-        
+        NeuronGroup inhibitory = NeuronGroup.createInhibitory("INH", motorGroups * neuronsPerGroup / 4,
+                new InputGenerator() {
+                    int step = 0;
+                    int group = 0;
+
+                    public DoubleMatrix generate(NeuronGroup neurons) {
+                        DoubleMatrix i = DoubleMatrix.rand(neurons.getSize()).muli(1.2e-9);
+                        if (step % 2000 == 0) {
+                            group = (int) (Math.random() * motorGroups);
+                            System.out.println("Step: " + step + " \tGroup: " + group);
+                        } else if (step % 2000 < 500) {
+                            int a = group * neuronsPerGroup / 4;
+                            int b = (group + 1) * neuronsPerGroup / 4;
+                            Range r = new IntervalRange(a, b);
+                            DoubleMatrix stimulus = i.getRange(a, b);
+                            stimulus.addi(0.2e-9);
+                            i.put(r, new PointRange(0), stimulus);
+                        }
+                        step++;
+                        return i;
+                    }
+                });
+
+        SynapseGroup excitatoryToInhibitory = SynapseGroup.connectGroups(excitatory, inhibitory, motorGroups,
+                neuronsPerGroup, 0.25);
+        SynapseGroup inhibitoryToExcitatory = SynapseGroup.connectOpponentGroups(inhibitory, excitatory, motorGroups,
+                neuronsPerGroup, 0.25);
+
         Network network = new Network();
         network.addNeuronGroups(excitatory, inhibitory);
         network.addSynapseGroups(excitatoryToInhibitory, inhibitoryToExcitatory);
         return network;
     }
-    
+
     public static Network createTopologicalNetwork(int numberNeurons) {
         Network network = new Network();
-        
+
         NeuronGroup input = NeuronGroup.createExcitatory("IN", 200, new InputGenerator() {
             int step = 0;
-            double x = 0;
-            
+
             public DoubleMatrix generate(NeuronGroup neurons) {
                 DoubleMatrix x = neurons.getXPosition();
                 DoubleMatrix i = x.sub(0.5 + 0.3 * Math.sin(step / 600.0));
@@ -85,39 +87,44 @@ public class Network {
         NeuronGroup inhibitory = NeuronGroup.createInhibitory("INH", numberNeurons / 4, 1.22e-9);
         NeuronGroup output = NeuronGroup.createExcitatory("OUT", 200, 1.2e-9);
         network.addNeuronGroups(input, excitatory, inhibitory, output);
-        
-        double conn = 0.1, minW = 0.1e-9, maxW = 1e-9;
+
+        double conn = 0.1, minW = 0.2e-9, maxW = 0.8e-9;
         SynapseGroup inputToExcitatory = SynapseGroup.connectNeighborhood(input, excitatory, conn, 0.05, minW, maxW);
-        //SynapseGroup inputToExcitatory = SynapseGroup.connectUniformRandom(input, excitatory, 0.1, maxW);
-        SynapseGroup excitatoryToExcitatory = SynapseGroup.connectNeighborhood(excitatory, excitatory, conn, 0.025, minW, maxW);
-        SynapseGroup excitatoryToInhibitory = SynapseGroup.connectNeighborhood(excitatory, inhibitory, conn, 0.01, minW, maxW);
-        SynapseGroup inhibitoryToExcitatory = SynapseGroup.connectNonNeighborhood(inhibitory, excitatory, conn, 0.025, minW, maxW);
+        // SynapseGroup inputToExcitatory =
+        // SynapseGroup.connectUniformRandom(input, excitatory, 0.1, maxW);
+        SynapseGroup excitatoryToExcitatory = SynapseGroup.connectNeighborhood(excitatory, excitatory, conn, 0.025,
+                minW, maxW);
+        SynapseGroup excitatoryToInhibitory = SynapseGroup.connectNeighborhood(excitatory, inhibitory, conn, 0.01, minW,
+                maxW);
+        SynapseGroup inhibitoryToExcitatory = SynapseGroup.connectNonNeighborhood(inhibitory, excitatory, conn, 0.025,
+                minW, maxW);
         SynapseGroup excitatoryToOutput = SynapseGroup.connectNeighborhood(excitatory, output, conn, 0.01, minW, maxW);
         network.addSynapseGroups(inputToExcitatory, excitatoryToExcitatory, excitatoryToInhibitory,
                 inhibitoryToExcitatory, excitatoryToOutput);
-        
+
         return network;
     }
-    
+
     private List<NeuronGroup> neuronGroups = new ArrayList<NeuronGroup>();
     private List<SynapseGroup> synapseGroups = new ArrayList<SynapseGroup>();
-    
-    private Network() {}
-    
+
+    private Network() {
+    }
+
     public void addNeuronGroups(NeuronGroup... groups) {
         for (NeuronGroup neurons : groups)
             neuronGroups.add(neurons);
     }
-    
+
     public NeuronGroup getNeuronGroup(int index) {
         return neuronGroups.get(index);
     }
-    
+
     public void addSynapseGroups(SynapseGroup... groups) {
         for (SynapseGroup synapses : groups)
             synapseGroups.add(synapses);
     }
-    
+
     public void update(double dt) {
         for (NeuronGroup neurons : neuronGroups)
             neurons.update(dt);

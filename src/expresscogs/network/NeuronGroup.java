@@ -10,27 +10,27 @@ public class NeuronGroup {
     public static NeuronGroup createExcitatory(String name, int size) {
         return new NeuronGroup(name, size, true, InputGenerator.NullGenerator);
     }
-    
+
     public static NeuronGroup createExcitatory(String name, int size, double noiseScale) {
         return new NeuronGroup(name, size, true, new UniformNoiseGenerator(noiseScale));
     }
-    
+
     public static NeuronGroup createExcitatory(String name, int size, InputGenerator generator) {
         return new NeuronGroup(name, size, true, generator);
     }
-    
+
     public static NeuronGroup createInhibitory(String name, int size) {
         return new NeuronGroup(name, size, false, InputGenerator.NullGenerator);
     }
-    
+
     public static NeuronGroup createInhibitory(String name, int size, double noiseScale) {
         return new NeuronGroup(name, size, false, new UniformNoiseGenerator(noiseScale));
     }
-    
+
     public static NeuronGroup createInhibitory(String name, int size, InputGenerator generator) {
         return new NeuronGroup(name, size, false, generator);
     }
-    
+
     private List<SynapseGroup> dendriticSynapseGroups = new ArrayList<SynapseGroup>();
     private List<SynapseGroup> axonalSynapseGroups = new ArrayList<SynapseGroup>();
     private String name;
@@ -53,12 +53,15 @@ public class NeuronGroup {
     private double deltaT = 2e-3;
     private double gEDecay = 0.9;
     private double gIDecay = 0.967;
-    private double tauW = 144e-3, a = 4e-9, b = 0.08e-9, vR = eL; // regular spiking
-    //private double tauW = 20e-3, a = 4e-9, b = 0.5e-9, vR = vT + 5e-3; // bursting
-    //private double tauW = 144e-3, a = 2 * c / 144e-3, b = 0, vR = eL; // fast spiking
+    private double tauW = 144e-3, a = 4e-9, b = 0.08e-9, vR = eL; // regular
+                                                                  // spiking
+    // private double tauW = 20e-3, a = 4e-9, b = 0.5e-9, vR = vT + 5e-3; //
+    // bursting
+    // private double tauW = 144e-3, a = 2 * c / 144e-3, b = 0, vR = eL; // fast
+    // spiking
     private double vCut = vT + 5 * deltaT;
     private InputGenerator generator;
-    
+
     private NeuronGroup(String name, int size, boolean excitatory, InputGenerator generator) {
         this.name = name;
         this.size = size;
@@ -75,15 +78,19 @@ public class NeuronGroup {
         spk = DoubleMatrix.zeros(size);
         this.generator = generator;
     }
-    
+
+    public String getName() {
+        return name;
+    }
+
     public void addDendriticSynapseGroup(SynapseGroup group) {
         dendriticSynapseGroups.add(group);
     }
-    
+
     public void addAxonalSynapseGroup(SynapseGroup group) {
         axonalSynapseGroups.add(group);
     }
-    
+
     public void update(double dt) {
         v.gti(vCut, spk);
         v.put(spk, vR);
@@ -103,38 +110,40 @@ public class NeuronGroup {
         gE.put(gE.gt(1e-9), 1e-9);
         gI.put(gI.gt(1e-9), 1e-9);
         i.addi(gE).subi(gI);
-        // dv = (dt / c) * (gL * deltaT * exp((v - vT) / deltaT) - gL * (v - eL) - w + i);
-        MatrixFunctions.expi(v.subi(vT, dv).divi(deltaT)).muli(gL * deltaT).subi(v.sub(eL).muli(gL)).subi(w).addi(i).muli(dt / c);
+        // dv = (dt / c) * (gL * deltaT * exp((v - vT) / deltaT) - gL * (v - eL)
+        // - w + i);
+        MatrixFunctions.expi(v.subi(vT, dv).divi(deltaT)).muli(gL * deltaT).subi(v.sub(eL).muli(gL)).subi(w).addi(i)
+                .muli(dt / c);
         // dw = (dt / tauW) * (a * (v - eL) - w);
         v.subi(eL, dw).muli(a).subi(w).muli(dt / tauW);
         v.addi(dv);
         w.addi(dw);
     }
-    
+
     public int getSize() {
         return size;
     }
-    
+
     public boolean getExcitatory() {
         return excitatory;
     }
-    
+
     public DoubleMatrix getXPosition() {
         return x;
     }
-    
+
     public DoubleMatrix getYPosition() {
         return y;
     }
-    
+
     public DoubleMatrix getInputs() {
         return i;
     }
-    
+
     public DoubleMatrix getPotentials() {
         return v;
     }
-    
+
     public DoubleMatrix getSpikes() {
         return spk;
     }
