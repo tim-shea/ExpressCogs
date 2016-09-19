@@ -7,6 +7,7 @@ import org.jblas.DoubleMatrix;
 import javafx.animation.Interpolator;
 import javafx.application.Platform;
 import javafx.collections.ObservableList;
+import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.chart.LineChart;
 import javafx.scene.chart.NumberAxis;
@@ -99,8 +100,8 @@ public class SimplePlot {
             //image = new WritableImage(width, height);
             imageView.setImage(image);
             container.getChildren().add(imageView);
-            imageView.fitHeightProperty().bind(container.heightProperty().multiply(0.8));
-            imageView.fitWidthProperty().bind(container.heightProperty().multiply(0.8 * width / (double) height));
+            imageView.fitHeightProperty().bind(container.heightProperty().multiply(0.45));
+            imageView.fitWidthProperty().bind(container.widthProperty().multiply(0.97));
         }
 
         public void setValues(DoubleMatrix values) {
@@ -144,6 +145,8 @@ public class SimplePlot {
 
     public static void init(Stage stage) {
         container = new VBox();
+        container.setPadding(new Insets(10, 10, 10, 10));
+        ((VBox)container).setSpacing(10);
         Scene scene = new Scene(container, 800, 600);
         scene.getStylesheets().add("styles/plotstyles.css");
         stage.setScene(scene);
