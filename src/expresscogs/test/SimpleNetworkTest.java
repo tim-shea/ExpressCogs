@@ -61,15 +61,14 @@ public class SimpleNetworkTest extends Application {
     private void startTopologicalTest(Stage stage) {
         int tSteps = 100000;
         double dt = 0.001;
-        int numberNeurons = 2000;
-        Network network = Network.createTopologicalNetwork(numberNeurons);
+        Network network = Network.createTopologicalNetwork();
         DoubleMatrix t = DoubleMatrix.zeros(tSteps);
-
+        
         Series<Number, Number> inSpikes = new Series<Number, Number>();
         Series<Number, Number> excSpikes = new Series<Number, Number>();
         Series<Number, Number> inhSpikes = new Series<Number, Number>();
         Series<Number, Number> outSpikes = new Series<Number, Number>();
-
+        
         SimplePlot.init(stage);
         SimplePlot.Scatter plot = new SimplePlot.Scatter();
         plot.addSeries(inSpikes);
@@ -77,20 +76,20 @@ public class SimpleNetworkTest extends Application {
         plot.addSeries(inhSpikes);
         plot.addSeries(outSpikes);
         plot.setLimits(0, tSteps * dt, 0, 5);
-
-        SimplePlot.HeatMap map = new SimplePlot.HeatMap(50, 30);
-        DoubleMatrix firingRates = DoubleMatrix.zeros(50, 30);
-
-        NeuronGroup in = network.getNeuronGroup(0);
-        NeuronGroup exc = network.getNeuronGroup(1);
-        NeuronGroup inh = network.getNeuronGroup(2);
-        NeuronGroup out = network.getNeuronGroup(3);
-
+        
+        SimplePlot.HeatMap map = new SimplePlot.HeatMap(30, 25);
+        DoubleMatrix firingRates = DoubleMatrix.zeros(30, 25);
+        
+        NeuronGroup in = network.getNeuronGroup("IN");
+        NeuronGroup exc = network.getNeuronGroup("MAIN_EXC");
+        NeuronGroup inh = network.getNeuronGroup("MAIN_INH");
+        NeuronGroup out = network.getNeuronGroup("OUT");
+        
         DoubleMatrix inSubSample = DoubleMatrix.rand(in.getSize()).lti(0.25);
         DoubleMatrix excSubSample = DoubleMatrix.rand(exc.getSize()).lti(0.1);
         DoubleMatrix inhSubSample = DoubleMatrix.rand(inh.getSize()).lti(0.1);
         DoubleMatrix outSubSample = DoubleMatrix.rand(out.getSize()).lti(0.25);
-
+        
         Task<Void> task = new Task<Void>() {
             @Override
             protected Void call() throws Exception {
@@ -99,21 +98,19 @@ public class SimpleNetworkTest extends Application {
                     if (step > 0) {
                         t.put(step, t.get(step - 1) + dt);
                     }
-
+                    
                     plotSpikes(inSpikes, in.getXPosition().get(inSubSample.and(in.getSpikes())), t.get(step));
-                    plotSpikes(excSpikes, exc.getXPosition().get(excSubSample.and(exc.getSpikes())).mul(3).add(1),
-                            t.get(step));
-                    plotSpikes(inhSpikes, inh.getXPosition().get(inhSubSample.and(inh.getSpikes())).add(4),
-                            t.get(step));
+                    plotSpikes(excSpikes, exc.getXPosition().get(excSubSample.and(exc.getSpikes())).mul(3).add(1), t.get(step));
+                    plotSpikes(inhSpikes, inh.getXPosition().get(inhSubSample.and(inh.getSpikes())).add(4), t.get(step));
                     plotSpikes(outSpikes, out.getXPosition().get(outSubSample.and(out.getSpikes())), t.get(step));
-
+                    
                     final double tPlot = t.get(step);
                     Platform.runLater(() -> {
                         plot.setLimits(tPlot - 5, tPlot, 0, 5);
                     });
-
-                    firingRates.muli(0.995).addi(exc.getSpikes().reshape(50, 30));
-
+                    
+                    firingRates.muli(0.998).addi(exc.getSpikes().reshape(30, 25));
+                    
                     if (step % 100 == 0) {
                         Platform.runLater(() -> {
                             map.setValues(firingRates);
@@ -125,7 +122,7 @@ public class SimpleNetworkTest extends Application {
         };
         new Thread(task).start();
     }
-
+    
     private void plotSpikes(final Series<Number, Number> series, final DoubleMatrix x, final double t) {
         Platform.runLater(() -> {
             for (int i = 0; i < x.length; ++i) {

@@ -66,12 +66,13 @@ public class Network {
         return network;
     }
 
-    public static Network createTopologicalNetwork(int numberNeurons) {
+    public static Network createTopologicalNetwork() {
         Network network = new Network();
-
+        
+        new TopologicalLayerFactory().create(network, "MAIN");
+        
         NeuronGroup input = NeuronGroup.createExcitatory("IN", 200, new InputGenerator() {
             int step = 0;
-
             public DoubleMatrix generate(NeuronGroup neurons) {
                 DoubleMatrix x = neurons.getXPosition();
                 DoubleMatrix i = x.sub(0.5 + 0.3 * Math.sin(step / 600.0));
@@ -83,48 +84,56 @@ public class Network {
                 return i;
             }
         });
-        NeuronGroup excitatory = NeuronGroup.createExcitatory("EXC", 3 * numberNeurons / 4, 1.25e-9);
-        NeuronGroup inhibitory = NeuronGroup.createInhibitory("INH", numberNeurons / 4, 1.2e-9);
         NeuronGroup output = NeuronGroup.createExcitatory("OUT", 200, 1.2e-9);
-        network.addNeuronGroups(input, excitatory, inhibitory, output);
-
-        double conn = 0.1, nbh = 0.025, minW = 0.1e-10, maxW = 0.5e-10;
-        SynapseGroup inputToExcitatory = SynapseGroup.connectNeighborhood(input, excitatory, conn, 2 * nbh, minW, maxW);
+        network.addNeuronGroups(input, output);
+        
+        double conn = 0.1, nbh = 0.02, minW = 5e-8, maxW = 10e-8;
+        SynapseGroup inputToExcitatory = SynapseGroup.connectNeighborhood(input, network.getNeuronGroup("MAIN_EXC"), conn, 4 * nbh, minW, maxW);
         // SynapseGroup inputToExcitatory = SynapseGroup.connectUniformRandom(input, excitatory, 0.1, maxW);
-        SynapseGroup excitatoryToExcitatory = SynapseGroup.connectNeighborhood(excitatory, excitatory, conn, nbh, minW, maxW);
-        SynapseGroup excitatoryToInhibitory = SynapseGroup.connectNeighborhood(excitatory, inhibitory, conn, nbh, 2 * minW, 2 * maxW);
-        SynapseGroup inhibitoryToExcitatory = SynapseGroup.connectNonNeighborhood(inhibitory, excitatory, conn, nbh, minW, maxW);
-        SynapseGroup excitatoryToOutput = SynapseGroup.connectNeighborhood(excitatory, output, conn, nbh / 2, minW, maxW);
-        network.addSynapseGroups(inputToExcitatory, excitatoryToExcitatory, excitatoryToInhibitory,
-                inhibitoryToExcitatory, excitatoryToOutput);
-
+        SynapseGroup excitatoryToOutput = SynapseGroup.connectNeighborhood(network.getNeuronGroup("MAIN_EXC"), output, conn, nbh / 2, minW, maxW);
+        
+        network.addSynapseGroups(inputToExcitatory, excitatoryToOutput);
+        
         return network;
     }
-
+    
     private List<NeuronGroup> neuronGroups = new ArrayList<NeuronGroup>();
     private List<SynapseGroup> synapseGroups = new ArrayList<SynapseGroup>();
-
+    
     private Network() {
     }
-
+    
     public void addNeuronGroups(NeuronGroup... groups) {
-        for (NeuronGroup neurons : groups)
+        for (NeuronGroup neurons : groups) {
             neuronGroups.add(neurons);
+        }
     }
-
+    
     public NeuronGroup getNeuronGroup(int index) {
         return neuronGroups.get(index);
     }
-
-    public void addSynapseGroups(SynapseGroup... groups) {
-        for (SynapseGroup synapses : groups)
-            synapseGroups.add(synapses);
+    
+    public NeuronGroup getNeuronGroup(String name) {
+        for (NeuronGroup neurons : neuronGroups) {
+            if (neurons.getName().equals(name)) {
+                return neurons;
+            }
+        }
+        return null;
     }
-
+    
+    public void addSynapseGroups(SynapseGroup... groups) {
+        for (SynapseGroup synapses : groups) {
+            synapseGroups.add(synapses);
+        }
+    }
+    
     public void update(double dt) {
-        for (NeuronGroup neurons : neuronGroups)
+        for (NeuronGroup neurons : neuronGroups) {
             neurons.update(dt);
-        for (SynapseGroup synapses : synapseGroups)
+        }
+        for (SynapseGroup synapses : synapseGroups) {
             synapses.update(dt);
+        }
     }
 }
