@@ -2,6 +2,12 @@ package expresscogs.test;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 import org.jblas.DoubleMatrix;
@@ -9,8 +15,10 @@ import org.jblas.DoubleMatrix;
 import expresscogs.network.Network;
 import expresscogs.network.NeuronGroup;
 import expresscogs.utility.SimplePlot;
+import expresscogs.utility.SimplePlot.BufferedDataSeries;
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.collections.transformation.FilteredList;
 import javafx.concurrent.Task;
 import javafx.scene.chart.XYChart.Data;
 import javafx.scene.chart.XYChart.Series;
@@ -18,16 +26,18 @@ import javafx.stage.Stage;
 import javafx.util.Pair;
 
 public class SimpleNetworkTest extends Application {
+    private boolean wait;
+    
     public static void main(String[] args) {
         launch(args);
     }
-
+    
     @Override
     public void start(Stage stage) {
         stage.setTitle("ExpressCogs");
         startTopologicalTest(stage);
     }
-
+    
     private void startMotorTest(Stage stage) {
         int tSteps = 30000;
         double dt = 0.001;
@@ -57,25 +67,24 @@ public class SimpleNetworkTest extends Application {
         plot.addPoints(spikes);
         plot.setLimits(0, tSteps * dt, 0, 1500);
     }
-
+    
     private void startTopologicalTest(Stage stage) {
         int tSteps = 100000;
         double dt = 0.001;
         Network network = Network.createTopologicalNetwork();
-        DoubleMatrix t = DoubleMatrix.zeros(tSteps);
         
-        Series<Number, Number> inSpikes = new Series<Number, Number>();
-        Series<Number, Number> excSpikes = new Series<Number, Number>();
-        Series<Number, Number> inhSpikes = new Series<Number, Number>();
-        Series<Number, Number> outSpikes = new Series<Number, Number>();
+        BufferedDataSeries inSpikes = new BufferedDataSeries();
+        BufferedDataSeries excSpikes = new BufferedDataSeries();
+        BufferedDataSeries inhSpikes = new BufferedDataSeries();
+        BufferedDataSeries outSpikes = new BufferedDataSeries();
         
         SimplePlot.init(stage);
-        SimplePlot.Scatter plot = new SimplePlot.Scatter();
-        plot.addSeries(inSpikes);
-        plot.addSeries(excSpikes);
-        plot.addSeries(inhSpikes);
-        plot.addSeries(outSpikes);
-        plot.setLimits(0, tSteps * dt, 0, 5);
+        SimplePlot.Scatter raster = new SimplePlot.Scatter();
+        raster.addSeries(inSpikes.getSeries());
+        raster.addSeries(excSpikes.getSeries());
+        raster.addSeries(inhSpikes.getSeries());
+        raster.addSeries(outSpikes.getSeries());
+        raster.setLimits(0, tSteps * dt, 0, 5);
         
         SimplePlot.HeatMap map = new SimplePlot.HeatMap(30, 25);
         DoubleMatrix firingRates = DoubleMatrix.zeros(30, 25);
@@ -90,31 +99,32 @@ public class SimpleNetworkTest extends Application {
         DoubleMatrix inhSubSample = DoubleMatrix.rand(inh.getSize()).lti(0.1);
         DoubleMatrix outSubSample = DoubleMatrix.rand(out.getSize()).lti(0.25);
         
+        wait = false;
         Task<Void> task = new Task<Void>() {
             @Override
             protected Void call() throws Exception {
                 for (int step = 0; step < tSteps; step += 1) {
+                    final double t = step * dt;
                     network.update(dt);
-                    if (step > 0) {
-                        t.put(step, t.get(step - 1) + dt);
-                    }
-                    
-                    plotSpikes(inSpikes, in.getXPosition().get(inSubSample.and(in.getSpikes())), t.get(step));
-                    plotSpikes(excSpikes, exc.getXPosition().get(excSubSample.and(exc.getSpikes())).mul(3).add(1), t.get(step));
-                    plotSpikes(inhSpikes, inh.getXPosition().get(inhSubSample.and(inh.getSpikes())).add(4), t.get(step));
-                    plotSpikes(outSpikes, out.getXPosition().get(outSubSample.and(out.getSpikes())), t.get(step));
-                    
-                    final double tPlot = t.get(step);
-                    Platform.runLater(() -> {
-                        plot.setLimits(tPlot - 5, tPlot, 0, 5);
-                    });
-                    
+                    bufferSpikes(inSpikes, in.getXPosition().get(inSubSample.and(in.getSpikes())), t);
+                    bufferSpikes(excSpikes, exc.getXPosition().get(excSubSample.and(exc.getSpikes())).mul(3).add(1), t);
+                    bufferSpikes(inhSpikes, inh.getXPosition().get(inhSubSample.and(inh.getSpikes())).add(4), t);
+                    bufferSpikes(outSpikes, out.getXPosition().get(outSubSample.and(out.getSpikes())), t);
                     firingRates.muli(0.998).addi(exc.getSpikes().reshape(30, 25));
-                    
-                    if (step % 100 == 0) {
+                    if (step % 500 == 0) {
+                        while (wait) {
+                            Thread.sleep(10);
+                        }
                         Platform.runLater(() -> {
+                            inSpikes.addBuffered();
+                            excSpikes.addBuffered();
+                            inhSpikes.addBuffered();
+                            outSpikes.addBuffered();
+                            raster.setLimits(t - 5, t, 0, 5);
                             map.setValues(firingRates);
+                            wait = false;
                         });
+                        wait = true;
                     }
                 }
                 return null;
@@ -123,17 +133,9 @@ public class SimpleNetworkTest extends Application {
         new Thread(task).start();
     }
     
-    private void plotSpikes(final Series<Number, Number> series, final DoubleMatrix x, final double t) {
-        Platform.runLater(() -> {
-            for (int i = 0; i < x.length; ++i) {
-                series.getData().add(new Data<Number, Number>(t, x.get(i)));
-            }
-            series.getData().removeIf(new Predicate<Data<Number, Number>>() {
-                @Override
-                public boolean test(Data<Number, Number> point) {
-                    return (point.getXValue().doubleValue() < t - 5);
-                }
-            });
-        });
+    private void bufferSpikes(BufferedDataSeries series, DoubleMatrix x, double t) {
+        for (int i = 0; i < x.length; ++i) {
+            series.bufferData(t, x.get(i));
+        }
     }
 }

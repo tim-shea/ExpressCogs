@@ -1,5 +1,6 @@
 package expresscogs.utility;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.jblas.DoubleMatrix;
@@ -26,6 +27,29 @@ import javafx.stage.Stage;
 import javafx.util.Pair;
 
 public class SimplePlot {
+    public static class BufferedDataSeries {
+        private Series<Number,Number> series = new Series<Number,Number>();
+        private List<Data<Number,Number>> buffer = new ArrayList<Data<Number,Number>>();
+        private int maxSize = 1000;
+        
+        public Series<Number,Number> getSeries() {
+            return series;
+        }
+        
+        public void bufferData(double x, double y) {
+            buffer.add(new Data<Number,Number>(x, y));
+        }
+        
+        public void addBuffered() {
+            ObservableList<Data<Number,Number>> data = series.getData();
+            data.addAll(buffer);
+            buffer.clear();
+            if (data.size() > maxSize) {
+                data.remove(0, data.size() - maxSize);
+            }
+        }
+    }
+    
     public static class Line {
         public Line(DoubleMatrix x, DoubleMatrix y) {
             NumberAxis xAxis = new NumberAxis();
