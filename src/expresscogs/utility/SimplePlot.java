@@ -32,6 +32,10 @@ public class SimplePlot {
         private List<Data<Number,Number>> buffer = new ArrayList<Data<Number,Number>>();
         private int maxSize = 1000;
         
+        public BufferedDataSeries(String name) {
+            series.setName(name);
+        }
+        
         public Series<Number,Number> getSeries() {
             return series;
         }

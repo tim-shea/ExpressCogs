@@ -65,43 +65,9 @@ public class Network {
         network.addSynapseGroups(excitatoryToInhibitory, inhibitoryToExcitatory);
         return network;
     }
-
-    public static Network createTopologicalNetwork() {
-        Network network = new Network();
-        
-        new TopologicalLayerFactory().create(network, "MAIN");
-        
-        NeuronGroup input = NeuronGroup.createExcitatory("IN", 200, new InputGenerator() {
-            int step = 0;
-            public DoubleMatrix generate(NeuronGroup neurons) {
-                DoubleMatrix x = neurons.getXPosition();
-                DoubleMatrix i = x.sub(0.5 + 0.3 * Math.sin(step / 600.0));
-                MatrixFunctions.absi(i).subi(0.2).negi().muli(6e-9);
-                i.put(i.lt(0), 0);
-                step++;
-                if (step % 25000 > 20000)
-                    i = DoubleMatrix.zeros(neurons.getSize());
-                return i;
-            }
-        });
-        NeuronGroup output = NeuronGroup.createExcitatory("OUT", 200, 1.2e-9);
-        network.addNeuronGroups(input, output);
-        
-        double conn = 0.1, nbh = 0.02, minW = 5e-8, maxW = 10e-8;
-        SynapseGroup inputToExcitatory = SynapseGroup.connectNeighborhood(input, network.getNeuronGroup("MAIN_EXC"), conn, 4 * nbh, minW, maxW);
-        // SynapseGroup inputToExcitatory = SynapseGroup.connectUniformRandom(input, excitatory, 0.1, maxW);
-        SynapseGroup excitatoryToOutput = SynapseGroup.connectNeighborhood(network.getNeuronGroup("MAIN_EXC"), output, conn, nbh / 2, minW, maxW);
-        
-        network.addSynapseGroups(inputToExcitatory, excitatoryToOutput);
-        
-        return network;
-    }
     
     private List<NeuronGroup> neuronGroups = new ArrayList<NeuronGroup>();
     private List<SynapseGroup> synapseGroups = new ArrayList<SynapseGroup>();
-    
-    private Network() {
-    }
     
     public void addNeuronGroups(NeuronGroup... groups) {
         for (NeuronGroup neurons : groups) {
