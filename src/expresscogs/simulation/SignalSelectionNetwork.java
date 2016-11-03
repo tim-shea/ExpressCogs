@@ -52,7 +52,6 @@ public class SignalSelectionNetwork extends Application {
     private void startVisualization(Stage stage) {
         SimplePlot.init(stage);
         SimplePlot.Scatter raster = new SimplePlot.Scatter();
-        raster.setLimits(0, 5, 0, 5);
         
         BufferedDataSeries thlSpikes = new BufferedDataSeries("THL");
         raster.addSeries(thlSpikes.getSeries());
@@ -74,8 +73,16 @@ public class SignalSelectionNetwork extends Application {
         raster.addSeries(gpiSpikes.getSeries());
         NeuronGroup gpi = network.getNeuronGroup("GPI");
         
+        SimplePlot.Line firingRates = new SimplePlot.Line();
+        
+        BufferedDataSeries n0FiringRate = new BufferedDataSeries("N0 Firing Rate");
+        n0FiringRate.setMaxLength(100);
+        firingRates.addSeries(n0FiringRate.getSeries());
+        
         waitForSync = false;
         Task<Void> task = new Task<Void>() {
+            int n0SpikeCount = 0;
+            
             @Override
             protected Void call() throws Exception {
                 for (int step = 0; step < tSteps; step += 1) {
@@ -87,6 +94,7 @@ public class SignalSelectionNetwork extends Application {
                     bufferSpikes(strSpikes, str.getXPosition().get(str.getSpikes()).add(2), t);
                     bufferSpikes(stnSpikes, stn.getXPosition().get(stn.getSpikes()).add(3), t);
                     bufferSpikes(gpiSpikes, gpi.getXPosition().get(gpi.getSpikes()).add(4), t);
+                    n0SpikeCount += ctx.getSpikes().sum();
                     
                     if (step % 50 == 0 || step == tSteps - 1) {
                         waitForSync = true;
@@ -97,6 +105,10 @@ public class SignalSelectionNetwork extends Application {
                             stnSpikes.addBuffered();
                             gpiSpikes.addBuffered();
                             raster.setLimits(t - 5, t, 0, 5);
+                            n0FiringRate.bufferData(t, n0SpikeCount);
+                            n0FiringRate.addBuffered();
+                            n0SpikeCount = 0;
+                            firingRates.setLimits(t - 5, t, 0, 50);
                             waitForSync = false;
                         });
                         while (waitForSync) {
