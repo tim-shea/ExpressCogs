@@ -12,9 +12,9 @@ public class SynapseGroup {
         return synapses;
     }
     
-    public static SynapseGroup connectUniformRandom(NeuronGroup source, NeuronGroup target, double connectivity, double maxWeight) {
+    public static SynapseGroup connectUniformRandom(NeuronGroup source, NeuronGroup target, double connectivity, double minWeight, double maxWeight) {
         DoubleMatrix p = DoubleMatrix.ones(source.getSize(), target.getSize()).muli(connectivity);
-        return connect(source, target, p, 0, maxWeight);
+        return connect(source, target, p, minWeight, maxWeight);
     }
     
     public static SynapseGroup connectNeighborhood(NeuronGroup source, NeuronGroup target, double connectivity, double neighborhood, double minWeight, double maxWeight) {

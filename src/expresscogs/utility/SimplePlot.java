@@ -30,10 +30,18 @@ public class SimplePlot {
     public static class BufferedDataSeries {
         private Series<Number,Number> series = new Series<Number,Number>();
         private List<Data<Number,Number>> buffer = new ArrayList<Data<Number,Number>>();
-        private int maxSize = 1000;
+        private int maxLength = 1000;
         
         public BufferedDataSeries(String name) {
             series.setName(name);
+        }
+        
+        public int getMaxLength() {
+            return maxLength;
+        }
+        
+        public void setMaxLength(int value) {
+            maxLength = value;
         }
         
         public Series<Number,Number> getSeries() {
@@ -48,8 +56,8 @@ public class SimplePlot {
             ObservableList<Data<Number,Number>> data = series.getData();
             data.addAll(buffer);
             buffer.clear();
-            if (data.size() > maxSize) {
-                data.remove(0, data.size() - maxSize);
+            if (data.size() > maxLength) {
+                data.remove(0, data.size() - maxLength);
             }
         }
     }

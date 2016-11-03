@@ -19,11 +19,11 @@ public class Network {
         NeuronGroup output = NeuronGroup.createExcitatory("OUT", 100);
         network.addNeuronGroups(input, excitatory, inhibitory, output);
 
-        SynapseGroup inputToExcitatory = SynapseGroup.connectUniformRandom(input, excitatory, 0.1, 1e-9);
-        SynapseGroup excitatoryToExcitatory = SynapseGroup.connectUniformRandom(excitatory, excitatory, 0.1, 1e-9);
-        SynapseGroup excitatoryToInhibitory = SynapseGroup.connectUniformRandom(excitatory, inhibitory, 0.1, 1e-9);
-        SynapseGroup inhibitoryToExcitatory = SynapseGroup.connectUniformRandom(inhibitory, excitatory, 0.25, 1e-9);
-        SynapseGroup excitatoryToOutput = SynapseGroup.connectUniformRandom(excitatory, output, 0.1, 1e-9);
+        SynapseGroup inputToExcitatory = SynapseGroup.connectUniformRandom(input, excitatory, 0.1, 0, 1e-9);
+        SynapseGroup excitatoryToExcitatory = SynapseGroup.connectUniformRandom(excitatory, excitatory, 0.1, 0, 1e-9);
+        SynapseGroup excitatoryToInhibitory = SynapseGroup.connectUniformRandom(excitatory, inhibitory, 0.1, 0, 1e-9);
+        SynapseGroup inhibitoryToExcitatory = SynapseGroup.connectUniformRandom(inhibitory, excitatory, 0.25, 0, 1e-9);
+        SynapseGroup excitatoryToOutput = SynapseGroup.connectUniformRandom(excitatory, output, 0.1, 0, 1e-9);
         network.addSynapseGroups(inputToExcitatory, excitatoryToExcitatory, excitatoryToInhibitory,
                 inhibitoryToExcitatory, excitatoryToOutput);
 
