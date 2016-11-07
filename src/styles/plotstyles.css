@@ -9,9 +9,18 @@
 .chart-symbol-dot {
 	-fx-background-color: #000;
 }
+.series0 {
+	-fx-background-color: #e41a1c;
+}
 .series1 {
-	-fx-background-color: #D85218;
+	-fx-background-color: #377eb8;
 }
 .series2 {
-	-fx-background-color: #0071BC;
+	-fx-background-color: #4daf4a;
+}
+.series3 {
+	-fx-background-color: #984ea3;
+}
+.series4 {
+	-fx-background-color: #ff7f00;
 }
