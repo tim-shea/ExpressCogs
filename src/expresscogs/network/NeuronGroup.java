@@ -53,14 +53,12 @@ public class NeuronGroup {
     private double deltaT = 2e-3;
     private double gEDecay = 0.925;
     private double gIDecay = 0.967;
-    private double tauW = 144e-3, a = 4e-9, b = 0.08e-9, vR = eL; // regular
-                                                                  // spiking
-    // private double tauW = 20e-3, a = 4e-9, b = 0.5e-9, vR = vT + 5e-3; //
-    // bursting
-    // private double tauW = 144e-3, a = 2 * c / 144e-3, b = 0, vR = eL; // fast
-    // spiking
+    private double tauW = 144e-3, a = 4e-9, b = 0.08e-9, vR = eL;         // regular spiking
+    // private double tauW = 20e-3, a = 4e-9, b = 0.5e-9, vR = vT + 5e-3; // bursting
+    // private double tauW = 144e-3, a = 2 * c / 144e-3, b = 0, vR = eL;  // fast spiking
     private double vCut = vT + 5 * deltaT;
     private InputGenerator generator;
+    private double dt = 0.001;
 
     private NeuronGroup(String name, int size, boolean excitatory, InputGenerator generator) {
         this.name = name;
@@ -91,7 +89,7 @@ public class NeuronGroup {
         axonalSynapseGroups.add(group);
     }
 
-    public void update(double dt) {
+    public void update(int step) {
         v.gti(vCut, spk);
         v.put(spk, vR);
         w.put(spk, w.get(spk).add(b));
@@ -102,13 +100,13 @@ public class NeuronGroup {
         gI.muli(gIDecay);
         for (SynapseGroup synapses : dendriticSynapseGroups) {
             if (synapses.getSource().excitatory) {
-                gE.addi(synapses.getConductances());
+                gE.addi(synapses.getConductances(step));
             } else {
-                gI.addi(synapses.getConductances());
+                gI.addi(synapses.getConductances(step));
             }
         }
-        gE.put(gE.gt(1e-9), 1e-9);
-        gI.put(gI.gt(1e-9), 1e-9);
+        //gE.put(gE.gt(1e-9), 1e-9);
+        //gI.put(gI.gt(1e-9), 1e-9);
         i.addi(gE).subi(gI);
         // dv = (dt / c) * (gL * deltaT * exp((v - vT) / deltaT) - gL * (v - eL)
         // - w + i);
@@ -134,6 +132,14 @@ public class NeuronGroup {
 
     public DoubleMatrix getYPosition() {
         return y;
+    }
+    
+    public DoubleMatrix getExcitatoryConductance() {
+        return gE;
+    }
+    
+    public DoubleMatrix getInhibitoryConductance() {
+        return gI;
     }
 
     public DoubleMatrix getInputs() {

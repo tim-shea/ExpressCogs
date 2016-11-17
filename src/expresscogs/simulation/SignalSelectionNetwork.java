@@ -75,39 +75,54 @@ public class SignalSelectionNetwork extends Application {
     private void createNetwork() {
         network = new Network();
         
+        // Create the neuron groups and add them to the network
+        double backgroundInput = 1.25e-9;
+        int groupSize = 100;
+        
         // Create an input generator which sends activity to 3 random neurons every
-        // 1000 timesteps.
-        final DoubleMatrix i = DoubleMatrix.ones(100).muli(0.65e-9);
-        final DoubleMatrix stim = DoubleMatrix.zeros(100);
+        // 1000 timesteps
         InputGenerator thlInput = new InputGenerator() {
-            private int step = 0;
+            DoubleMatrix i = DoubleMatrix.zeros(groupSize);
+            double randomInput = 1.5e-9;
+            DoubleMatrix stim = DoubleMatrix.zeros(groupSize);
+            int stimDuration = 1000;
+            int stimInterval = 1000;
+            int stimNumber = 3;
+            double stimStrength = 2.5e-9;
+            int step = 0;
+            
             @Override
             public DoubleMatrix generate(NeuronGroup neurons) {
-                DoubleMatrix n = DoubleMatrix.rand(100).muli(0.05e-9);
-                if (++step % 1000 == 0) {
+                i = DoubleMatrix.rand(neurons.getSize()).muli(randomInput);
+                if (++step % (stimDuration + stimInterval) == 0) {
+                    int[] indices = DoubleMatrix.rand(stimNumber).muli(neurons.getSize() - 1).toIntArray();
+                    stim.put(indices, stimStrength);
+                } else if (step % (stimDuration + stimInterval) == stimDuration) {
                     stim.fill(0);
-                    int[] indices = DoubleMatrix.rand(3).muli(100).toIntArray();
-                    stim.put(indices, 2e-9);
                 }
-                return i.add(n).add(stim);
+                return i.add(stim);
             }
         };
         
-        // Create the neuron groups and add them to the network
-        thl = NeuronGroup.createExcitatory("THL", 100, thlInput);
-        ctx = NeuronGroup.createExcitatory("CTX", 100, 1.1e-9);
-        str = NeuronGroup.createInhibitory("STR", 100, 1.1e-9);
-        stn = NeuronGroup.createExcitatory("STN", 100, 1.1e-9);
-        gpi = NeuronGroup.createInhibitory("GPI", 100, 1.1e-9);
+        thl = NeuronGroup.createExcitatory("THL", groupSize, thlInput);
+        ctx = NeuronGroup.createExcitatory("CTX", groupSize, backgroundInput);
+        str = NeuronGroup.createInhibitory("STR", groupSize, backgroundInput);
+        stn = NeuronGroup.createExcitatory("STN", groupSize, backgroundInput);
+        gpi = NeuronGroup.createInhibitory("GPI", groupSize, backgroundInput);
         network.addNeuronGroups(thl, ctx, str, stn, gpi);
         
         // Create the synapse groups and add them to the network
-        SynapseGroup thlCtx = SynapseGroup.connectNeighborhood(thl, ctx, 0.2, 0.02, 0.1e-9, 1e-9);
-        SynapseGroup ctxStr = SynapseGroup.connectNeighborhood(ctx, str, 0.2, 0.02, 0.1e-9, 1e-9);
-        SynapseGroup ctxStn = SynapseGroup.connectNeighborhood(ctx, stn, 0.2, 0.5, 0.1e-9, 1e-9);
-        SynapseGroup strGpi = SynapseGroup.connectNeighborhood(str, gpi, 0.2, 0.02, 0.1e-9, 1e-9);
-        SynapseGroup stnGpi = SynapseGroup.connectNeighborhood(stn, gpi, 0.2, 0.02, 0.1e-9, 1e-9);
-        SynapseGroup gpiThl = SynapseGroup.connectNeighborhood(gpi, thl, 0.2, 0.02, 0.1e-9, 1e-9);
+        double connectivity = 0.2;
+        double narrow = 0.02;
+        double wide = 0.25;
+        double minWeight = 0.1e-9;
+        double maxWeight = 1e-9;
+        SynapseGroup thlCtx = SynapseGroup.connectNeighborhood(thl, ctx, connectivity, narrow, minWeight, maxWeight);
+        SynapseGroup ctxStr = SynapseGroup.connectNeighborhood(ctx, str, connectivity, narrow, minWeight, maxWeight);
+        SynapseGroup ctxStn = SynapseGroup.connectNeighborhood(ctx, stn, connectivity, wide, minWeight, maxWeight);
+        SynapseGroup strGpi = SynapseGroup.connectNeighborhood(str, gpi, connectivity, narrow, minWeight, maxWeight);
+        SynapseGroup stnGpi = SynapseGroup.connectNeighborhood(stn, gpi, connectivity, wide, minWeight, maxWeight);
+        SynapseGroup gpiThl = SynapseGroup.connectNeighborhood(gpi, thl, connectivity, narrow, minWeight, maxWeight);
         network.addSynapseGroups(thlCtx, ctxStr, ctxStn, strGpi, stnGpi, gpiThl);
     }
     
@@ -144,21 +159,26 @@ public class SignalSelectionNetwork extends Application {
         waitForSync = false;
         Task<Void> task = new Task<Void>() {
             int ctxSpikeCount = 0;
+            double dt = 0.001;
             
             @Override
             protected Void call() throws Exception {
                 for (int step = 0; step < tSteps; step += 1) {
                     final double t = step * dt;
-                    network.update(dt);
+                    try {
+                        network.update(step);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
                     
                     bufferSpikes(thlSpikes, thl.getXPosition().get(thl.getSpikes()), t);
                     bufferSpikes(ctxSpikes, ctx.getXPosition().get(ctx.getSpikes()).add(1), t);
                     bufferSpikes(strSpikes, str.getXPosition().get(str.getSpikes()).add(2), t);
                     bufferSpikes(stnSpikes, stn.getXPosition().get(stn.getSpikes()).add(3), t);
                     bufferSpikes(gpiSpikes, gpi.getXPosition().get(gpi.getSpikes()).add(4), t);
-                    ctxSpikeCount += ctx.getSpikes().sum();
+                    ctxSpikeCount += stn.getSpikes().sum();
                     
-                    if (step % 50 == 0 || step == tSteps - 1) {
+                    if (step % 20 == 0 || step == tSteps - 1) {
                         waitForSync = true;
                         Platform.runLater(() -> {
                             thlSpikes.addBuffered();
@@ -166,11 +186,11 @@ public class SignalSelectionNetwork extends Application {
                             strSpikes.addBuffered();
                             stnSpikes.addBuffered();
                             gpiSpikes.addBuffered();
-                            raster.setLimits(t - 5, t, 0, 5);
+                            raster.setLimits(t - 2, t, 0, 5);
                             ctxFiringRate.bufferData(t, ctxSpikeCount);
                             ctxFiringRate.addBuffered();
                             ctxSpikeCount = 0;
-                            firingRates.setLimits(t - 5, t, 0, 50);
+                            firingRates.setLimits(t - 2, t, 0, 50);
                             waitForSync = false;
                         });
                         while (waitForSync) {

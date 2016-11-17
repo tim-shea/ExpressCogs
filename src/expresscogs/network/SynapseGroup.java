@@ -7,8 +7,8 @@ public class SynapseGroup {
     public static SynapseGroup connect(NeuronGroup source, NeuronGroup target, DoubleMatrix connectivity, double minWeight, double maxWeight) {
         SynapseGroup synapses = new SynapseGroup(source, target);
         generateSynapses(synapses, connectivity);
-        pruneSelfSynapses(synapses);
         randomizeWeights(synapses, minWeight, maxWeight);
+        randomizeDelays(synapses, 10);
         return synapses;
     }
     
@@ -38,8 +38,8 @@ public class SynapseGroup {
         p.subi(p2).addi(p2.rowMaxs().repmat(1, p.columns));
         p.diviColumnVector(p.rowMeans()).muli(connectivity);
         generateSynapses(synapses, p);
-        pruneSelfSynapses(synapses);
         randomizeWeights(synapses, minW, maxW);
+        randomizeDelays(synapses, 10);
         return synapses;
     }
     
@@ -52,6 +52,7 @@ public class SynapseGroup {
     
     public static SynapseGroup connectGroups(NeuronGroup source, NeuronGroup target, int motorGroups, int neuronsPerGroup, double connectivity) {
         SynapseGroup synapses = new SynapseGroup(source, target);
+        /*
         generateSynapses(synapses, connectivity);
         DoubleMatrix sourceGroups = DoubleMatrix.linspace(0, source.getSize() - 1,
                 source.getSize()).divi(source.getSize() / motorGroups);
@@ -62,11 +63,13 @@ public class SynapseGroup {
         synapses.s.muli(sourceGroups.repmat(1, target.getSize()).eqi(targetGroups.repmat(source.getSize(), 1)));
         pruneSelfSynapses(synapses);
         randomizeWeights(synapses, 0e-9, 4e-9);
+        */
         return synapses;
     }
     
     public static SynapseGroup connectOpponentGroups(NeuronGroup source, NeuronGroup target, int motorGroups, int neuronsPerGroup, double connectivity) {
         SynapseGroup synapses = new SynapseGroup(source, target);
+        /*
         generateSynapses(synapses, connectivity);
         DoubleMatrix sourceGroups = DoubleMatrix.linspace(0, source.getSize() - 1, source.getSize()).divi(source.getSize() / motorGroups);
         MatrixFunctions.floori(sourceGroups);
@@ -75,6 +78,7 @@ public class SynapseGroup {
         synapses.s.muli(sourceGroups.repmat(1, target.getSize()).nei(targetGroups.repmat(source.getSize(), 1)));
         pruneSelfSynapses(synapses);
         randomizeWeights(synapses, 0e-9, 4e-9);
+        */
         return synapses;
     }
     
@@ -87,40 +91,69 @@ public class SynapseGroup {
     
     private static void generateSynapses(SynapseGroup synapses, DoubleMatrix probability) {
         DoubleMatrix random = DoubleMatrix.rand(probability.rows, probability.columns);
-        synapses.s = random.lt(probability);
-    }
-    
-    private static void pruneSelfSynapses(SynapseGroup synapses) {
+        DoubleMatrix s = random.lt(probability);
         if (synapses.source == synapses.target) {
-            synapses.s.put(DoubleMatrix.eye(synapses.source.getSize()), 0);
+            s.put(DoubleMatrix.eye(synapses.source.getSize()), 0);
+        }
+        int count = 0;
+        int numSynapses = (int)s.sum();
+        synapses.preIndex = DoubleMatrix.zeros(numSynapses);
+        synapses.postIndex = DoubleMatrix.zeros(numSynapses);
+        for (int i : s.findIndices()) {
+            synapses.preIndex.put(count, s.indexRows(i));
+            synapses.postIndex.put(count, s.indexColumns(i));
+            ++count;
         }
     }
     
     private static void randomizeWeights(SynapseGroup synapses, double minWeight, double maxWeight) {
-        synapses.w = DoubleMatrix.rand(synapses.source.getSize(), synapses.target.getSize());
-        synapses.w.muli(maxWeight - minWeight).addi(minWeight);
-        synapses.w.muli(synapses.s);
+        synapses.weights = DoubleMatrix.rand(synapses.preIndex.length);
+        synapses.weights.muli(maxWeight - minWeight).addi(minWeight);
+    }
+    
+    private static void randomizeDelays(SynapseGroup synapses, int maxDelay) {
+        synapses.maxDelay = maxDelay;
+        synapses.delays = DoubleMatrix.rand(synapses.preIndex.length);
+        MatrixFunctions.floori(synapses.delays.muli(maxDelay));
+        synapses.conductances = DoubleMatrix.zeros(synapses.target.getSize(), maxDelay);
     }
     
     private NeuronGroup source;
     private NeuronGroup target;
-    private DoubleMatrix s;
-    private DoubleMatrix w;
-    private DoubleMatrix g;
+    private DoubleMatrix preIndex;
+    private DoubleMatrix postIndex;
+    private DoubleMatrix weights;
+    private DoubleMatrix delays;
+    private DoubleMatrix conductances;
+    private int maxDelay;
     
     private SynapseGroup(NeuronGroup source, NeuronGroup target) {
         this.source = source;
         source.addAxonalSynapseGroup(this);
         this.target = target;
         target.addDendriticSynapseGroup(this);
-        s = DoubleMatrix.zeros(source.getSize(), target.getSize());
-        w = DoubleMatrix.zeros(source.getSize(), target.getSize());
-        g = DoubleMatrix.zeros(target.getSize());
+        preIndex = DoubleMatrix.zeros(0);
+        postIndex = DoubleMatrix.zeros(0);
+        weights = DoubleMatrix.zeros(0);
+        delays = DoubleMatrix.zeros(0);
+        conductances = DoubleMatrix.zeros(target.getSize(), 1);
     }
     
-    public void update(double dt) {
-        g.fill(0);
-        g.addi(w.getRows(source.getSpikes()).columnSums());
+    public void update(int step) {
+        // Check this math!!!
+        conductances.putColumn(step % maxDelay, conductances.getColumn(step % maxDelay).fill(0));
+        int[] spikes = source.getSpikes().findIndices();
+        for (int n : spikes) {
+            int[] synapses = preIndex.eq(n).findIndices();
+            DoubleMatrix w = weights.get(synapses);
+            DoubleMatrix t = postIndex.get(synapses);
+            DoubleMatrix d = delays.get(synapses).add(step);
+            d.divi(maxDelay);
+            d = d.sub(MatrixFunctions.floor(d)).mul(maxDelay);
+            int[] indices = t.add(d.mul(conductances.rows)).toIntArray();
+            w.addi(conductances.get(indices));
+            conductances.put(indices, w);
+        }
     }
     
     public NeuronGroup getSource() {
@@ -131,15 +164,11 @@ public class SynapseGroup {
         return target;
     }
     
-    public DoubleMatrix getStates() {
-        return s;
-    }
-    
     public DoubleMatrix getWeights() {
-        return w;
+        return weights;
     }
     
-    public DoubleMatrix getConductances() {
-        return g;
+    public DoubleMatrix getConductances(int step) {
+        return conductances.getColumn(step % maxDelay);
     }
 }

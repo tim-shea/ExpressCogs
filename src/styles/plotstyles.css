@@ -24,3 +24,6 @@
 .series4 {
 	-fx-background-color: #ff7f00;
 }
+.chart-line-symbol {
+	-fx-background-color: transparent;
+}

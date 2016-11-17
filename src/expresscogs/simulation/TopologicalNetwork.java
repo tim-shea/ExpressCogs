@@ -91,7 +91,7 @@ public class TopologicalNetwork extends Application {
             protected Void call() throws Exception {
                 for (int step = 0; step < tSteps; step += 1) {
                     final double t = step * dt;
-                    network.update(dt);
+                    network.update(step);
                     bufferSpikes(inSpikes, in.getXPosition().get(inSubSample.and(in.getSpikes())), t);
                     bufferSpikes(excSpikes, exc.getXPosition().get(excSubSample.and(exc.getSpikes())).mul(3).add(1), t);
                     bufferSpikes(inhSpikes, inh.getXPosition().get(inhSubSample.and(inh.getSpikes())).add(4), t);

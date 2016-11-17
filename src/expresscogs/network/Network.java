@@ -94,12 +94,12 @@ public class Network {
         }
     }
     
-    public void update(double dt) {
+    public void update(int step) {
         for (NeuronGroup neurons : neuronGroups) {
-            neurons.update(dt);
+            neurons.update(step);
         }
         for (SynapseGroup synapses : synapseGroups) {
-            synapses.update(dt);
+            synapses.update(step);
         }
     }
 }

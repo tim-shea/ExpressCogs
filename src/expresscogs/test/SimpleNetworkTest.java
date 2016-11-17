@@ -46,7 +46,7 @@ public class SimpleNetworkTest extends Application {
         List<Pair<Number, Number>> spikes = new LinkedList<Pair<Number, Number>>();
         int exc = 0, inh = 0;
         for (int step = 0; step < tSteps; step += 1) {
-            network.update(dt);
+            network.update(step);
             if (step > 0)
                 t.put(step, t.get(step - 1) + dt);
 
