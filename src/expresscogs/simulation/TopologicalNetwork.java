@@ -3,13 +3,14 @@ package expresscogs.simulation;
 import org.jblas.DoubleMatrix;
 import org.jblas.MatrixFunctions;
 
+import expresscogs.network.NeuronGroup;
 import expresscogs.network.InputGenerator;
 import expresscogs.network.Network;
-import expresscogs.network.NeuronGroup;
+import expresscogs.network.AdExNeuronGroup;
 import expresscogs.network.SynapseGroup;
-import expresscogs.network.TopologicalLayerFactory;
-import expresscogs.utility.SimplePlot;
-import expresscogs.utility.SimplePlot.BufferedDataSeries;
+import expresscogs.utility.BufferedDataSeries;
+import expresscogs.utility.HeatMap;
+import expresscogs.utility.TimeSeriesPlot;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
@@ -34,8 +35,9 @@ public class TopologicalNetwork extends Application {
     
     private void createTopologicalNetwork() {
         network = new Network();
+        /*
         new TopologicalLayerFactory().createRecurrent(network);
-        NeuronGroup input = NeuronGroup.createExcitatory("IN", 200, new InputGenerator() {
+        NeuronGroup input = AdExNeuronGroup.createExcitatory("IN", 200, new InputGenerator() {
             int step = 0;
             public DoubleMatrix generate(NeuronGroup neurons) {
                 DoubleMatrix x = neurons.getXPosition();
@@ -49,30 +51,25 @@ public class TopologicalNetwork extends Application {
                 return i;
             }
         });
-        NeuronGroup output = NeuronGroup.createExcitatory("OUT", 200, 1.2e-9);
+        NeuronGroup output = AdExNeuronGroup.createExcitatory("OUT", 200, 1.2e-9);
         network.addNeuronGroups(input, output);
         double conn = 0.1, nbh = 0.02, minW = 1e-8, maxW = 4e-8;
         SynapseGroup inputToExcitatory = SynapseGroup.connectNeighborhood(input, network.getNeuronGroup("EXC"), conn, 4 * nbh, minW, maxW);
         // SynapseGroup inputToExcitatory = SynapseGroup.connectUniformRandom(input, excitatory, 0.1, maxW);
         SynapseGroup excitatoryToOutput = SynapseGroup.connectNeighborhood(network.getNeuronGroup("EXC"), output, conn, nbh / 2, minW, maxW);
         network.addSynapseGroups(inputToExcitatory, excitatoryToOutput);
+        */
     }
     
     private void startNetworkVisualization(Stage stage) {
-        BufferedDataSeries inSpikes = new BufferedDataSeries("IN");
-        BufferedDataSeries excSpikes = new BufferedDataSeries("EXC");
-        BufferedDataSeries inhSpikes = new BufferedDataSeries("INH");
-        BufferedDataSeries outSpikes = new BufferedDataSeries("OUT");
+        TimeSeriesPlot.init(stage);
+        TimeSeriesPlot raster = TimeSeriesPlot.scatter();
+        raster.addSeries("IN");
+        raster.addSeries("EXC");
+        raster.addSeries("INH");
+        raster.addSeries("OUT");
         
-        SimplePlot.init(stage);
-        SimplePlot.Scatter raster = new SimplePlot.Scatter();
-        raster.addSeries(inSpikes.getSeries());
-        raster.addSeries(excSpikes.getSeries());
-        raster.addSeries(inhSpikes.getSeries());
-        raster.addSeries(outSpikes.getSeries());
-        raster.setLimits(0, 5, 0, 6);
-        
-        SimplePlot.HeatMap map = new SimplePlot.HeatMap(30, 25);
+        HeatMap map = new HeatMap(30, 25);
         DoubleMatrix firingRates = DoubleMatrix.zeros(30, 25);
         
         NeuronGroup in = network.getNeuronGroup("IN");
@@ -92,18 +89,15 @@ public class TopologicalNetwork extends Application {
                 for (int step = 0; step < tSteps; step += 1) {
                     final double t = step * dt;
                     network.update(step);
-                    bufferSpikes(inSpikes, in.getXPosition().get(inSubSample.and(in.getSpikes())), t);
-                    bufferSpikes(excSpikes, exc.getXPosition().get(excSubSample.and(exc.getSpikes())).mul(3).add(1), t);
-                    bufferSpikes(inhSpikes, inh.getXPosition().get(inhSubSample.and(inh.getSpikes())).add(4), t);
-                    bufferSpikes(outSpikes, out.getXPosition().get(outSubSample.and(out.getSpikes())).add(5), t);
+                    raster.bufferPoints("IN", t, in.getXPosition().get(inSubSample.and(in.getSpikes())).data);
+                    raster.bufferPoints("EXC", t, exc.getXPosition().get(excSubSample.and(exc.getSpikes())).mul(3).add(1).data);
+                    raster.bufferPoints("INH", t, inh.getXPosition().get(inhSubSample.and(inh.getSpikes())).add(4).data);
+                    raster.bufferPoints("OUT", t, out.getXPosition().get(outSubSample.and(out.getSpikes())).add(5).data);
                     firingRates.muli(0.998).addi(exc.getSpikes().reshape(30, 25));
                     if (step % 500 == 0 || step == tSteps - 1) {
                         waitForSync = true;
                         Platform.runLater(() -> {
-                            inSpikes.addBuffered();
-                            excSpikes.addBuffered();
-                            inhSpikes.addBuffered();
-                            outSpikes.addBuffered();
+                            raster.addPoints();
                             raster.setLimits(t - 5, t, 0, 6);
                             map.setValues(firingRates);
                             waitForSync = false;
