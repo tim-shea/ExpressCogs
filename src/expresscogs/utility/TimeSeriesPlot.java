@@ -1,22 +1,12 @@
 package expresscogs.utility;
 
 import java.util.HashMap;
-import java.util.List;
-
 import expresscogs.gui.ResizeListener;
-import javafx.application.Platform;
-import javafx.geometry.Insets;
-import javafx.scene.Scene;
 import javafx.scene.chart.LineChart;
 import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.ScatterChart;
 import javafx.scene.chart.XYChart;
-import javafx.scene.chart.XYChart.Data;
-import javafx.scene.chart.XYChart.Series;
 import javafx.scene.layout.Pane;
-import javafx.scene.layout.VBox;
-import javafx.stage.Stage;
-import javafx.util.Pair;
 
 public class TimeSeriesPlot {
     static Pane container;
@@ -88,11 +78,24 @@ public class TimeSeriesPlot {
     }
 
     public void setLimits(double xLower, double xUpper, double yLower, double yUpper) {
+        setXLimits(xLower, xUpper);
+        setYLimits(yLower, yUpper);
+    }
+    
+    public void setXLimits(double xLower, double xUpper) {
         xAxis.setLowerBound(xLower);
         xAxis.setUpperBound(xUpper);
         xAxis.setTickUnit((xUpper - xLower) / 10);
+    }
+    
+    public void setYLimits(double yLower, double yUpper) {
         yAxis.setLowerBound(yLower);
         yAxis.setUpperBound(yUpper);
         yAxis.setTickUnit((yUpper - yLower) / 10);
+    }
+    
+    public void setAutoRanging(boolean xAuto, boolean yAuto) {
+        xAxis.setAutoRanging(xAuto);
+        yAxis.setAutoRanging(yAuto);
     }
 }

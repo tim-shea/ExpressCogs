@@ -95,7 +95,7 @@ public class TopologicalNetwork extends Application {
                         Platform.runLater(() -> {
                             raster.addPoints();
                             raster.setLimits(t - 5, t, 0, 6);
-                            map.setValues(firingRates);
+                            map.setValues(firingRates, firingRates.max());
                             waitForSync = false;
                         });
                         while (waitForSync) {

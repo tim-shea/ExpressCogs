@@ -8,6 +8,7 @@ import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import org.jblas.DoubleMatrix;
+import org.jblas.MatrixFunctions;
 
 import expresscogs.utility.HeatMap;
 import expresscogs.utility.TimeSeriesPlot;
@@ -29,7 +30,6 @@ import javafx.stage.Stage;
  * for the majority of the synaptic pathways in the model.
  * 
  * @author Tim
- *
  */
 public class SignalSelectionNetwork extends Application {
     public static void main(String[] args) {
@@ -49,9 +49,8 @@ public class SignalSelectionNetwork extends Application {
     private int tSteps = 100000;
     // Duration of simulation step in seconds
     private double dt = 0.001;
-    private double lowInput = 0.4e-3;
-    private double highInput = 1.5 * lowInput;
-    private int groupSize = 250;
+    private double backgroundInput = 0.4e-3;
+    private int groupSize = 500;
     private double connectivity = 0.1;
     private double narrow = 0.1;
     private double wide = 0.5;
@@ -62,17 +61,16 @@ public class SignalSelectionNetwork extends Application {
     private NeuronGroup thl;
     private NeuronGroup ctx;
     private NeuronGroup str;
-    private NeuronGroup str2;
     private NeuronGroup stn;
     private NeuronGroup gpi;
-    private NeuronGroup gpe;
     
     // Buffered data for visualization
     private DoubleMatrix spikeCounts;
     
     // Charts for visualization
     private TimeSeriesPlot raster;
-    private HeatMap heatmap;
+    private TimeSeriesPlot lfpPlot;
+    private DoubleMatrix distanceToElectrode;
     
     @Override
     public void start(Stage stage) throws Exception {
@@ -82,35 +80,27 @@ public class SignalSelectionNetwork extends Application {
         runSimulation(stage);
     }
     
-    /** Create the network structure, consisting of 5 neuron groups and 6 synaptic
-     * pathways. */
+    /** Create the network structure, consisting of 5 neuron groups and 6 synaptic pathways. */
     private void createNetwork() {
         network = new Network();
         
         // Create the neuron groups and add them to the network
         InputGenerator thlInput = new StimulusGenerator();
         thl = NeuronFactory.createLifExcitatory("THL", groupSize, thlInput);
-        ctx = NeuronFactory.createLifExcitatory("CTX", groupSize, lowInput);
-        str = NeuronFactory.createLifInhibitory("STR", groupSize, lowInput);
-        str2 = NeuronFactory.createLifInhibitory("STR2", groupSize, lowInput);
-        stn = NeuronFactory.createLifExcitatory("STN", groupSize, highInput);
-        gpi = NeuronFactory.createLifInhibitory("GPI", groupSize, lowInput);
-        gpe = NeuronFactory.createLifInhibitory("GPE", groupSize, lowInput);
-        network.addNeuronGroups(thl, ctx, str, str2, stn, gpi, gpe);
+        ctx = NeuronFactory.createLifExcitatory("CTX", groupSize, backgroundInput);
+        str = NeuronFactory.createLifInhibitory("STR", groupSize, backgroundInput);
+        stn = NeuronFactory.createLifExcitatory("STN", groupSize, backgroundInput);
+        gpi = NeuronFactory.createLifInhibitory("GPI", groupSize, backgroundInput);
+        network.addNeuronGroups(thl, ctx, str, stn, gpi);
         
         // Create the synapse groups and add them to the network
         SynapseGroup thlCtx = SynapseFactory.connectNeighborhood(thl, ctx, connectivity, narrow, minWeight, maxWeight);
         SynapseGroup ctxStr = SynapseFactory.connectNeighborhood(ctx, str, connectivity, narrow, minWeight, maxWeight);
         SynapseGroup ctxStn = SynapseFactory.connectNeighborhood(ctx, stn, connectivity, wide, minWeight, maxWeight);
-        SynapseGroup ctxStr2 = SynapseFactory.connectNeighborhood(ctx, str2, connectivity, narrow, minWeight, maxWeight);
-        SynapseGroup strGpi = SynapseFactory.connectNeighborhood(str, gpi, connectivity, narrow, minWeight, maxWeight);
-        SynapseGroup str2Gpe = SynapseFactory.connectNeighborhood(str2, gpe, connectivity, narrow, minWeight, maxWeight);
+        SynapseGroup strGpi = SynapseFactory.connectNeighborhood(str, gpi, connectivity, narrow, minWeight, 0.5 * maxWeight);
         SynapseGroup stnGpi = SynapseFactory.connectNeighborhood(stn, gpi, connectivity, narrow, minWeight, maxWeight);
-        SynapseGroup stnGpe = SynapseFactory.connectNeighborhood(stn, gpe, connectivity, narrow, minWeight, maxWeight);
-        SynapseGroup gpiThl = SynapseFactory.connectNeighborhood(gpi, thl, connectivity, narrow, minWeight, maxWeight);
-        SynapseGroup gpeStn = SynapseFactory.connectNeighborhood(gpe, stn, 0, narrow, minWeight, maxWeight);
-        SynapseGroup gpeGpi = SynapseFactory.connectNeighborhood(gpe, gpi, 0, narrow, minWeight, maxWeight);
-        network.addSynapseGroups(thlCtx, ctxStr, ctxStn, ctxStr2, strGpi, str2Gpe, stnGpi, stnGpe, gpiThl, gpeStn, gpeGpi);
+        SynapseGroup gpiThl = SynapseFactory.connectNeighborhood(gpi, thl, connectivity, narrow, minWeight, 0.2 * maxWeight);
+        network.addSynapseGroups(thlCtx, ctxStr, ctxStn, strGpi, stnGpi, gpiThl);
     }
     
     /** Setup a visualization of the network activity. */
@@ -130,9 +120,7 @@ public class SignalSelectionNetwork extends Application {
         pauseButton.setOnAction(event -> pauseSimulation = true);
         toolbar.getChildren().addAll(runButton, pauseButton);
         container.getChildren().add(toolbar);
-
-        HBox mainPanel = new HBox();
-
+        
         TimeSeriesPlot.init(container);
         raster = TimeSeriesPlot.scatter();
         raster.addSeries("THL");
@@ -140,9 +128,15 @@ public class SignalSelectionNetwork extends Application {
         raster.addSeries("STR");
         raster.addSeries("STN");
         raster.addSeries("GPI");
-        heatmap = new HeatMap(groupSize, 5);
-        spikeCounts = DoubleMatrix.zeros(groupSize, 5);
-
+        lfpPlot = TimeSeriesPlot.line();
+        lfpPlot.addSeries("LFP");
+        lfpPlot.setAutoRanging(false, true);
+        DoubleMatrix dx = stn.getXPosition().sub(0.5);
+        dx.muli(dx);
+        DoubleMatrix dy = stn.getYPosition().sub(0.5);
+        dy.muli(dy);
+        distanceToElectrode = MatrixFunctions.sqrt(dx.add(dy));
+        
         stage.show();
     }
     
@@ -159,36 +153,39 @@ public class SignalSelectionNetwork extends Application {
                     while (pauseSimulation) {
                         Thread.sleep(50);
                     }
-
+                    
                     final double t = step * dt;
                     try {
                         network.update(step);
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
-
+                    
                     raster.bufferPoints("THL", t, thl.getXPosition().get(thl.getSpikes().and(sample)).data);
                     raster.bufferPoints("CTX", t, ctx.getXPosition().get(ctx.getSpikes().and(sample)).add(1).data);
                     raster.bufferPoints("STR", t, str.getXPosition().get(str.getSpikes().and(sample)).add(2).data);
                     raster.bufferPoints("STN", t, stn.getXPosition().get(stn.getSpikes().and(sample)).add(3).data);
                     raster.bufferPoints("GPI", t, gpi.getXPosition().get(gpi.getSpikes().and(sample)).add(4).data);
-                    spikeCounts.muli(0.99);
-                    spikeCounts.putColumn(0, spikeCounts.getColumn(0).add(thl.getSpikes()));
-                    spikeCounts.putColumn(1, spikeCounts.getColumn(1).add(ctx.getSpikes()));
-                    spikeCounts.putColumn(2, spikeCounts.getColumn(2).add(str.getSpikes()));
-                    spikeCounts.putColumn(3, spikeCounts.getColumn(3).add(stn.getSpikes()));
-                    spikeCounts.putColumn(4, spikeCounts.getColumn(4).add(gpi.getSpikes()));
                     
-                    if (step % 50 == 0 || step == tSteps - 1) {
+                    // Calculate the local field potential for an electrode in the subthalamic nucleus
+                    double lfp = 0;
+                    for (int i = 0; i < stn.getSize(); ++i) {
+                        DoubleMatrix c = stn.getExcitatoryConductance().add(stn.getInhibitoryConductance());
+                        lfp = c.divi(distanceToElectrode).sum();
+                    }
+                    lfpPlot.bufferPoint("LFP", t, lfp);
+                    
+                    if (step % 25 == 0 || step == tSteps - 1) {
                         waitForSync = true;
                         Platform.runLater(() -> {
                             raster.addPoints();
                             raster.setLimits(t - 0.5, t, 0, 5);
-                            heatmap.setValues(spikeCounts);
+                            lfpPlot.addPoints();
+                            lfpPlot.setXLimits(t - 0.5, t);
                             waitForSync = false;
                         });
                         while (waitForSync) {
-                            Thread.sleep(100);
+                            Thread.sleep(10);
                         }
                     }
                 }

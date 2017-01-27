@@ -52,9 +52,9 @@ public class HeatMap {
         }
     }
 
-    public void setValues(DoubleMatrix values) {
+    public void setValues(DoubleMatrix values, double maxValue) {
         if (image != null) {
-            this.values = values.div(values.max());
+            this.values = values.div(maxValue);
             resample();
         }
     }
