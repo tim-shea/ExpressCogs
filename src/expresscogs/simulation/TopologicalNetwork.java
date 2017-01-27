@@ -1,13 +1,9 @@
 package expresscogs.simulation;
 
 import org.jblas.DoubleMatrix;
-import org.jblas.MatrixFunctions;
 
 import expresscogs.network.NeuronGroup;
-import expresscogs.network.InputGenerator;
 import expresscogs.network.Network;
-import expresscogs.network.AdExNeuronGroup;
-import expresscogs.network.SynapseGroup;
 import expresscogs.utility.BufferedDataSeries;
 import expresscogs.utility.HeatMap;
 import expresscogs.utility.TimeSeriesPlot;
@@ -54,15 +50,15 @@ public class TopologicalNetwork extends Application {
         NeuronGroup output = AdExNeuronGroup.createExcitatory("OUT", 200, 1.2e-9);
         network.addNeuronGroups(input, output);
         double conn = 0.1, nbh = 0.02, minW = 1e-8, maxW = 4e-8;
-        SynapseGroup inputToExcitatory = SynapseGroup.connectNeighborhood(input, network.getNeuronGroup("EXC"), conn, 4 * nbh, minW, maxW);
-        // SynapseGroup inputToExcitatory = SynapseGroup.connectUniformRandom(input, excitatory, 0.1, maxW);
-        SynapseGroup excitatoryToOutput = SynapseGroup.connectNeighborhood(network.getNeuronGroup("EXC"), output, conn, nbh / 2, minW, maxW);
+        DelaySynapseGroup inputToExcitatory = DelaySynapseGroup.connectNeighborhood(input, network.getNeuronGroup("EXC"), conn, 4 * nbh, minW, maxW);
+        // DelaySynapseGroup inputToExcitatory = DelaySynapseGroup.connectUniformRandom(input, excitatory, 0.1, maxW);
+        DelaySynapseGroup excitatoryToOutput = DelaySynapseGroup.connectNeighborhood(network.getNeuronGroup("EXC"), output, conn, nbh / 2, minW, maxW);
         network.addSynapseGroups(inputToExcitatory, excitatoryToOutput);
         */
     }
     
     private void startNetworkVisualization(Stage stage) {
-        TimeSeriesPlot.init(stage);
+        //TimeSeriesPlot.init(stage);
         TimeSeriesPlot raster = TimeSeriesPlot.scatter();
         raster.addSeries("IN");
         raster.addSeries("EXC");

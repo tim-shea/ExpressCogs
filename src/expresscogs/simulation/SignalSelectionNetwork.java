@@ -1,14 +1,14 @@
 package expresscogs.simulation;
 
+import expresscogs.network.*;
+import javafx.geometry.Insets;
+import javafx.scene.Scene;
+import javafx.scene.control.Button;
+import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 import org.jblas.DoubleMatrix;
 
-import expresscogs.network.NeuronGroup;
-import expresscogs.network.SynapseFactory;
-import expresscogs.network.NeuronFactory;
-import expresscogs.network.InputGenerator;
-import expresscogs.network.LifNeuronGroup;
-import expresscogs.network.Network;
-import expresscogs.network.SynapseGroup;
 import expresscogs.utility.HeatMap;
 import expresscogs.utility.TimeSeriesPlot;
 import javafx.application.Application;
@@ -40,17 +40,32 @@ public class SignalSelectionNetwork extends Application {
     private Network network;
     // Flag for synchronization
     private boolean waitForSync;
+    // Flag for simulation state
+    private boolean pauseSimulation;
+
+    /* Simulation parameters -----------------------------------------------------------------------------------------*/
+
     // Total number of simulation steps (duration = dt * tSteps)
     private int tSteps = 100000;
     // Duration of simulation step in seconds
     private double dt = 0.001;
-    
+    private double lowInput = 0.4e-3;
+    private double highInput = 1.5 * lowInput;
+    private int groupSize = 250;
+    private double connectivity = 0.1;
+    private double narrow = 0.1;
+    private double wide = 0.5;
+    private double minWeight = 0;
+    private double maxWeight = 1e-4;
+
     // Neuron groups
     private NeuronGroup thl;
     private NeuronGroup ctx;
     private NeuronGroup str;
+    private NeuronGroup str2;
     private NeuronGroup stn;
     private NeuronGroup gpi;
+    private NeuronGroup gpe;
     
     // Buffered data for visualization
     private DoubleMatrix spikeCounts;
@@ -73,60 +88,85 @@ public class SignalSelectionNetwork extends Application {
         network = new Network();
         
         // Create the neuron groups and add them to the network
-        double backgroundInput = 0.4e-3;
-        int groupSize = 500;
         InputGenerator thlInput = new StimulusGenerator();
         thl = NeuronFactory.createLifExcitatory("THL", groupSize, thlInput);
-        ctx = NeuronFactory.createLifExcitatory("CTX", groupSize, backgroundInput);
-        str = NeuronFactory.createLifInhibitory("STR", groupSize, backgroundInput);
-        stn = NeuronFactory.createLifExcitatory("STN", groupSize, backgroundInput);
-        gpi = NeuronFactory.createLifInhibitory("GPI", groupSize, backgroundInput);
-        network.addNeuronGroups(thl, ctx, str, stn, gpi);
+        ctx = NeuronFactory.createLifExcitatory("CTX", groupSize, lowInput);
+        str = NeuronFactory.createLifInhibitory("STR", groupSize, lowInput);
+        str2 = NeuronFactory.createLifInhibitory("STR2", groupSize, lowInput);
+        stn = NeuronFactory.createLifExcitatory("STN", groupSize, highInput);
+        gpi = NeuronFactory.createLifInhibitory("GPI", groupSize, lowInput);
+        gpe = NeuronFactory.createLifInhibitory("GPE", groupSize, lowInput);
+        network.addNeuronGroups(thl, ctx, str, str2, stn, gpi, gpe);
         
         // Create the synapse groups and add them to the network
-        double connectivity = 0.1;
-        double narrow = 0.1;
-        double wide = 0.5;
-        double minWeight = 0;
-        double maxWeight = 1e-4;
         SynapseGroup thlCtx = SynapseFactory.connectNeighborhood(thl, ctx, connectivity, narrow, minWeight, maxWeight);
         SynapseGroup ctxStr = SynapseFactory.connectNeighborhood(ctx, str, connectivity, narrow, minWeight, maxWeight);
         SynapseGroup ctxStn = SynapseFactory.connectNeighborhood(ctx, stn, connectivity, wide, minWeight, maxWeight);
-        SynapseGroup strGpi = SynapseFactory.connectNeighborhood(str, gpi, connectivity, narrow, minWeight, 0.5 * maxWeight);
+        SynapseGroup ctxStr2 = SynapseFactory.connectNeighborhood(ctx, str2, connectivity, narrow, minWeight, maxWeight);
+        SynapseGroup strGpi = SynapseFactory.connectNeighborhood(str, gpi, connectivity, narrow, minWeight, maxWeight);
+        SynapseGroup str2Gpe = SynapseFactory.connectNeighborhood(str2, gpe, connectivity, narrow, minWeight, maxWeight);
         SynapseGroup stnGpi = SynapseFactory.connectNeighborhood(stn, gpi, connectivity, narrow, minWeight, maxWeight);
-        SynapseGroup gpiThl = SynapseFactory.connectNeighborhood(gpi, thl, connectivity, narrow, minWeight, 0.2 * maxWeight);
-        network.addSynapseGroups(thlCtx, ctxStr, ctxStn, strGpi, stnGpi, gpiThl);
+        SynapseGroup stnGpe = SynapseFactory.connectNeighborhood(stn, gpe, connectivity, narrow, minWeight, maxWeight);
+        SynapseGroup gpiThl = SynapseFactory.connectNeighborhood(gpi, thl, connectivity, narrow, minWeight, maxWeight);
+        SynapseGroup gpeStn = SynapseFactory.connectNeighborhood(gpe, stn, 0, narrow, minWeight, maxWeight);
+        SynapseGroup gpeGpi = SynapseFactory.connectNeighborhood(gpe, gpi, 0, narrow, minWeight, maxWeight);
+        network.addSynapseGroups(thlCtx, ctxStr, ctxStn, ctxStr2, strGpi, str2Gpe, stnGpi, stnGpe, gpiThl, gpeStn, gpeGpi);
     }
     
     /** Setup a visualization of the network activity. */
     private void createVisualization(Stage stage) {
-        TimeSeriesPlot.init(stage);
+        VBox container = new VBox();
+        container.setPadding(new Insets(10, 10, 10, 10));
+        container.setSpacing(10);
+        Scene scene = new Scene(container, 800, 600);
+        scene.getStylesheets().add("styles/plotstyles.css");
+        stage.setScene(scene);
+
+        FlowPane toolbar = new FlowPane();
+        toolbar.setHgap(10);
+        Button runButton = new Button("run");
+        runButton.setOnAction(event -> pauseSimulation = false);
+        Button pauseButton = new Button("pause");
+        pauseButton.setOnAction(event -> pauseSimulation = true);
+        toolbar.getChildren().addAll(runButton, pauseButton);
+        container.getChildren().add(toolbar);
+
+        HBox mainPanel = new HBox();
+
+        TimeSeriesPlot.init(container);
         raster = TimeSeriesPlot.scatter();
         raster.addSeries("THL");
         raster.addSeries("CTX");
         raster.addSeries("STR");
         raster.addSeries("STN");
         raster.addSeries("GPI");
-        heatmap = new HeatMap(500, 5);
-        spikeCounts = DoubleMatrix.zeros(500, 5);
+        heatmap = new HeatMap(groupSize, 5);
+        spikeCounts = DoubleMatrix.zeros(groupSize, 5);
+
+        stage.show();
     }
     
     /** Run the simulation on a new thread. */
     private void runSimulation(Stage stage) {
         waitForSync = false;
+        pauseSimulation = true;
         Task<Void> task = new Task<Void>() {
-            DoubleMatrix sample = DoubleMatrix.rand(500).lti(0.2);
+            DoubleMatrix sample = DoubleMatrix.rand(groupSize).lti(0.2);
             
             @Override
             protected Void call() throws Exception {
                 for (int step = 0; step < tSteps; step += 1) {
+                    while (pauseSimulation) {
+                        Thread.sleep(50);
+                    }
+
                     final double t = step * dt;
                     try {
                         network.update(step);
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
-                    
+
                     raster.bufferPoints("THL", t, thl.getXPosition().get(thl.getSpikes().and(sample)).data);
                     raster.bufferPoints("CTX", t, ctx.getXPosition().get(ctx.getSpikes().and(sample)).add(1).data);
                     raster.bufferPoints("STR", t, str.getXPosition().get(str.getSpikes().and(sample)).add(2).data);
@@ -139,7 +179,7 @@ public class SignalSelectionNetwork extends Application {
                     spikeCounts.putColumn(3, spikeCounts.getColumn(3).add(stn.getSpikes()));
                     spikeCounts.putColumn(4, spikeCounts.getColumn(4).add(gpi.getSpikes()));
                     
-                    if (step % 10 == 0 || step == tSteps - 1) {
+                    if (step % 50 == 0 || step == tSteps - 1) {
                         waitForSync = true;
                         Platform.runLater(() -> {
                             raster.addPoints();
@@ -148,7 +188,7 @@ public class SignalSelectionNetwork extends Application {
                             waitForSync = false;
                         });
                         while (waitForSync) {
-                            Thread.sleep(50);
+                            Thread.sleep(100);
                         }
                     }
                 }
@@ -156,9 +196,7 @@ public class SignalSelectionNetwork extends Application {
             }
         };
         Thread thread = new Thread(task);
-        stage.setOnCloseRequest(evt -> {
-            thread.interrupt();
-        });
+        stage.setOnCloseRequest(event -> thread.interrupt());
         thread.start();
     }
 }

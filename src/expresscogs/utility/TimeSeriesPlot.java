@@ -3,6 +3,7 @@ package expresscogs.utility;
 import java.util.HashMap;
 import java.util.List;
 
+import expresscogs.gui.ResizeListener;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
@@ -20,14 +21,8 @@ import javafx.util.Pair;
 public class TimeSeriesPlot {
     static Pane container;
     
-    public static void init(Stage stage) {
-        container = new VBox();
-        container.setPadding(new Insets(10, 10, 10, 10));
-        ((VBox)container).setSpacing(10);
-        Scene scene = new Scene(container, 800, 600);
-        scene.getStylesheets().add("styles/plotstyles.css");
-        stage.setScene(scene);
-        stage.show();
+    public static void init(Pane container) {
+        TimeSeriesPlot.container = container;
     }
     
     public static TimeSeriesPlot scatter() {
@@ -60,6 +55,7 @@ public class TimeSeriesPlot {
     private void createScatter() {
         chart = new ScatterChart<Number, Number>(xAxis, yAxis);
         chart.setAnimated(false);
+        ResizeListener.makeResizable(chart, ResizeListener.Mode.VERTICAL);
         container.getChildren().add(chart);
     }
     

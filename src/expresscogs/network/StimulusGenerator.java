@@ -1,4 +1,4 @@
-package expresscogs.simulation;
+package expresscogs.network;
 
 import org.jblas.DoubleMatrix;
 import org.jblas.MatrixFunctions;
@@ -15,11 +15,11 @@ import expresscogs.network.NeuronGroup;
  * @author Tim
  *
  */
-class StimulusGenerator implements InputGenerator {
+public class StimulusGenerator implements InputGenerator {
     private DoubleMatrix stimulus;
     private double noise = 0.5e-3;
     private int duration = 500;
-    private int interval = 500;
+    private int interval = 1000;
     private double scale = 3e-3;
     private double width = 0.05;
     private int step = 0;

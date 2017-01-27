@@ -6,7 +6,7 @@ import org.jblas.MatrixFunctions;
 public final class SynapseFactory {
     public static SynapseGroup connect(String name, NeuronGroup source, NeuronGroup target, DoubleMatrix connectivity, double minWeight, double maxWeight) {
         DoubleMatrix index = generateConnections(connectivity, source != target);
-        SynapseGroup synapses = new SynapseGroup(name, source, target, index, 10);
+        DelaySynapseGroup synapses = new DelaySynapseGroup(name, source, target, index, 10);
         randomizeWeights(synapses, minWeight, maxWeight);
         randomizeDelays(synapses, 10);
         return synapses;
@@ -46,7 +46,7 @@ public final class SynapseFactory {
         p.subi(p2).addi(p2.rowMaxs().repmat(1, p.columns));
         p.diviColumnVector(p.rowMeans()).muli(connectivity);
         DoubleMatrix index = generateConnections(p, source != target);
-        SynapseGroup synapses = new SynapseGroup(name, source, target, index, 10);
+        DelaySynapseGroup synapses = new DelaySynapseGroup(name, source, target, index, 10);
         randomizeWeights(synapses, minW, maxW);
         randomizeDelays(synapses, 10);
         return synapses;
@@ -85,7 +85,7 @@ public final class SynapseFactory {
         synapses.getWeights().muli(maxWeight - minWeight).addi(minWeight);
     }
     
-    private static void randomizeDelays(SynapseGroup synapses, int maxDelay) {
+    private static void randomizeDelays(DelaySynapseGroup synapses, int maxDelay) {
         synapses.getDelays().copy(DoubleMatrix.rand(synapses.getPreIndex().length));
         MatrixFunctions.floori(synapses.getDelays().muli(maxDelay));
     }

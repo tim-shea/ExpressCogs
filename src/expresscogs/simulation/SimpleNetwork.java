@@ -1,11 +1,6 @@
 package expresscogs.simulation;
 
-import expresscogs.network.Network;
-import expresscogs.network.NeuronGroup;
-import expresscogs.network.SynapseFactory;
-import expresscogs.network.NeuronFactory;
-import expresscogs.network.AdExNeuronGroup;
-import expresscogs.network.SynapseGroup;
+import expresscogs.network.*;
 import expresscogs.utility.TimeSeriesPlot;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -61,7 +56,7 @@ public class SimpleNetwork extends Application {
     
     /** Setup a visualization of the network activity. */
     private void createVisualization(Stage stage) {
-        TimeSeriesPlot.init(stage);
+        //TimeSeriesPlot.init(stage);
         potentials = TimeSeriesPlot.line();
         conductances = TimeSeriesPlot.line();
         
