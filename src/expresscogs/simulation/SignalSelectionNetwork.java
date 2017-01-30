@@ -1,14 +1,15 @@
 package expresscogs.simulation;
 
+import expresscogs.network.*;
+import javafx.geometry.Insets;
+import javafx.scene.Scene;
+import javafx.scene.control.Button;
+import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 import org.jblas.DoubleMatrix;
+import org.jblas.MatrixFunctions;
 
-import expresscogs.network.NeuronGroup;
-import expresscogs.network.SynapseFactory;
-import expresscogs.network.NeuronFactory;
-import expresscogs.network.InputGenerator;
-import expresscogs.network.LifNeuronGroup;
-import expresscogs.network.Network;
-import expresscogs.network.SynapseGroup;
 import expresscogs.utility.HeatMap;
 import expresscogs.utility.TimeSeriesPlot;
 import javafx.application.Application;
@@ -29,7 +30,6 @@ import javafx.stage.Stage;
  * for the majority of the synaptic pathways in the model.
  * 
  * @author Tim
- *
  */
 public class SignalSelectionNetwork extends Application {
     public static void main(String[] args) {
@@ -40,11 +40,23 @@ public class SignalSelectionNetwork extends Application {
     private Network network;
     // Flag for synchronization
     private boolean waitForSync;
+    // Flag for simulation state
+    private boolean pauseSimulation;
+
+    /* Simulation parameters -----------------------------------------------------------------------------------------*/
+
     // Total number of simulation steps (duration = dt * tSteps)
     private int tSteps = 100000;
     // Duration of simulation step in seconds
     private double dt = 0.001;
-    
+    private double backgroundInput = 0.4e-3;
+    private int groupSize = 500;
+    private double connectivity = 0.1;
+    private double narrow = 0.1;
+    private double wide = 0.5;
+    private double minWeight = 0;
+    private double maxWeight = 1e-4;
+
     // Neuron groups
     private NeuronGroup thl;
     private NeuronGroup ctx;
@@ -61,7 +73,8 @@ public class SignalSelectionNetwork extends Application {
     
     // Charts for visualization
     private TimeSeriesPlot raster;
-    private HeatMap heatmap;
+    private TimeSeriesPlot lfpPlot;
+    private DoubleMatrix distanceToElectrode;
     
     @Override
     public void start(Stage stage) throws Exception {
@@ -71,14 +84,11 @@ public class SignalSelectionNetwork extends Application {
         runSimulation(stage);
     }
     
-    /** Create the network structure, consisting of 5 neuron groups and 6 synaptic
-     * pathways. */
+    /** Create the network structure, consisting of 5 neuron groups and 6 synaptic pathways. */
     private void createNetwork() {
         network = new Network();
         
         // Create the neuron groups and add them to the network
-        double backgroundInput = 0.4e-3;
-        int groupSize = 500;
         InputGenerator thlInput = new StimulusGenerator();
         thl = NeuronFactory.createLifExcitatory("THL", groupSize, thlInput);
         ctx = NeuronFactory.createLifExcitatory("CTX", groupSize, backgroundInput);
@@ -93,11 +103,6 @@ public class SignalSelectionNetwork extends Application {
         network.addNeuronGroups(thl, ctx, str, stn, gpi, gpe, st2, pfe, pfi);
         
         // Create the synapse groups and add them to the network
-        double connectivity = 0.1;
-        double narrow = 0.1;
-        double wide = 0.5;
-        double minWeight = 0;
-        double maxWeight = 1e-4;
         SynapseGroup thlCtx = SynapseFactory.connectNeighborhood(thl, ctx, connectivity, narrow, minWeight, maxWeight);
         SynapseGroup ctxStr = SynapseFactory.connectNeighborhood(ctx, str, connectivity, narrow, minWeight, maxWeight);
         SynapseGroup ctxStn = SynapseFactory.connectNeighborhood(ctx, stn, connectivity, wide, minWeight, maxWeight);
@@ -127,26 +132,55 @@ public class SignalSelectionNetwork extends Application {
     
     /** Setup a visualization of the network activity. */
     private void createVisualization(Stage stage) {
-        TimeSeriesPlot.init(stage);
+        VBox container = new VBox();
+        container.setPadding(new Insets(10, 10, 10, 10));
+        container.setSpacing(10);
+        Scene scene = new Scene(container, 800, 600);
+        scene.getStylesheets().add("styles/plotstyles.css");
+        stage.setScene(scene);
+
+        FlowPane toolbar = new FlowPane();
+        toolbar.setHgap(10);
+        Button runButton = new Button("run");
+        runButton.setOnAction(event -> pauseSimulation = false);
+        Button pauseButton = new Button("pause");
+        pauseButton.setOnAction(event -> pauseSimulation = true);
+        toolbar.getChildren().addAll(runButton, pauseButton);
+        container.getChildren().add(toolbar);
+        
+        TimeSeriesPlot.init(container);
         raster = TimeSeriesPlot.scatter();
         raster.addSeries("THL");
         raster.addSeries("CTX");
         raster.addSeries("STR");
         raster.addSeries("STN");
         raster.addSeries("GPI");
-        heatmap = new HeatMap(500, 5);
-        spikeCounts = DoubleMatrix.zeros(500, 5);
+        lfpPlot = TimeSeriesPlot.line();
+        lfpPlot.addSeries("LFP");
+        lfpPlot.setAutoRanging(false, true);
+        DoubleMatrix dx = stn.getXPosition().sub(0.5);
+        dx.muli(dx);
+        DoubleMatrix dy = stn.getYPosition().sub(0.5);
+        dy.muli(dy);
+        distanceToElectrode = MatrixFunctions.sqrt(dx.add(dy));
+        
+        stage.show();
     }
     
     /** Run the simulation on a new thread. */
     private void runSimulation(Stage stage) {
         waitForSync = false;
+        pauseSimulation = true;
         Task<Void> task = new Task<Void>() {
-            DoubleMatrix sample = DoubleMatrix.rand(500).lti(0.2);
+            DoubleMatrix sample = DoubleMatrix.rand(groupSize).lti(0.2);
             
             @Override
             protected Void call() throws Exception {
                 for (int step = 0; step < tSteps; step += 1) {
+                    while (pauseSimulation) {
+                        Thread.sleep(50);
+                    }
+                    
                     final double t = step * dt;
                     try {
                         network.update(step);
@@ -159,23 +193,26 @@ public class SignalSelectionNetwork extends Application {
                     raster.bufferPoints("STR", t, str.getXPosition().get(str.getSpikes().and(sample)).add(2).data);
                     raster.bufferPoints("STN", t, stn.getXPosition().get(stn.getSpikes().and(sample)).add(3).data);
                     raster.bufferPoints("GPI", t, gpi.getXPosition().get(gpi.getSpikes().and(sample)).add(4).data);
-                    spikeCounts.muli(0.99);
-                    spikeCounts.putColumn(0, spikeCounts.getColumn(0).add(thl.getSpikes()));
-                    spikeCounts.putColumn(1, spikeCounts.getColumn(1).add(ctx.getSpikes()));
-                    spikeCounts.putColumn(2, spikeCounts.getColumn(2).add(str.getSpikes()));
-                    spikeCounts.putColumn(3, spikeCounts.getColumn(3).add(stn.getSpikes()));
-                    spikeCounts.putColumn(4, spikeCounts.getColumn(4).add(gpi.getSpikes()));
                     
-                    if (step % 10 == 0 || step == tSteps - 1) {
+                    // Calculate the local field potential for an electrode in the subthalamic nucleus
+                    double lfp = 0;
+                    for (int i = 0; i < stn.getSize(); ++i) {
+                        DoubleMatrix c = stn.getExcitatoryConductance().add(stn.getInhibitoryConductance());
+                        lfp = c.divi(distanceToElectrode).sum();
+                    }
+                    lfpPlot.bufferPoint("LFP", t, lfp);
+                    
+                    if (step % 25 == 0 || step == tSteps - 1) {
                         waitForSync = true;
                         Platform.runLater(() -> {
                             raster.addPoints();
                             raster.setLimits(t - 0.5, t, 0, 5);
-                            heatmap.setValues(spikeCounts);
+                            lfpPlot.addPoints();
+                            lfpPlot.setXLimits(t - 0.5, t);
                             waitForSync = false;
                         });
                         while (waitForSync) {
-                            Thread.sleep(50);
+                            Thread.sleep(10);
                         }
                     }
                 }
@@ -183,9 +220,7 @@ public class SignalSelectionNetwork extends Application {
             }
         };
         Thread thread = new Thread(task);
-        stage.setOnCloseRequest(evt -> {
-            thread.interrupt();
-        });
+        stage.setOnCloseRequest(event -> thread.interrupt());
         thread.start();
     }
 }
