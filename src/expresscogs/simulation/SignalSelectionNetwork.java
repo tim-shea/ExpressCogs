@@ -63,6 +63,10 @@ public class SignalSelectionNetwork extends Application {
     private NeuronGroup str;
     private NeuronGroup stn;
     private NeuronGroup gpi;
+    private NeuronGroup gpe;
+    private NeuronGroup st2;
+    private NeuronGroup pfe;
+    private NeuronGroup pfi;
     
     // Buffered data for visualization
     private DoubleMatrix spikeCounts;
@@ -88,10 +92,15 @@ public class SignalSelectionNetwork extends Application {
         InputGenerator thlInput = new StimulusGenerator();
         thl = NeuronFactory.createLifExcitatory("THL", groupSize, thlInput);
         ctx = NeuronFactory.createLifExcitatory("CTX", groupSize, backgroundInput);
+        // STR and ST2 = Go and NoGo
         str = NeuronFactory.createLifInhibitory("STR", groupSize, backgroundInput);
         stn = NeuronFactory.createLifExcitatory("STN", groupSize, backgroundInput);
         gpi = NeuronFactory.createLifInhibitory("GPI", groupSize, backgroundInput);
-        network.addNeuronGroups(thl, ctx, str, stn, gpi);
+        gpe = NeuronFactory.createLifInhibitory("GPE", groupSize, backgroundInput);
+        st2 = NeuronFactory.createLifInhibitory("ST2", groupSize, backgroundInput);
+        pfe = NeuronFactory.createLifExcitatory("PFE", groupSize, backgroundInput);
+        pfi = NeuronFactory.createLifInhibitory("PFI", groupSize, backgroundInput);
+        network.addNeuronGroups(thl, ctx, str, stn, gpi, gpe, st2, pfe, pfi);
         
         // Create the synapse groups and add them to the network
         SynapseGroup thlCtx = SynapseFactory.connectNeighborhood(thl, ctx, connectivity, narrow, minWeight, maxWeight);
@@ -100,7 +109,25 @@ public class SignalSelectionNetwork extends Application {
         SynapseGroup strGpi = SynapseFactory.connectNeighborhood(str, gpi, connectivity, narrow, minWeight, 0.5 * maxWeight);
         SynapseGroup stnGpi = SynapseFactory.connectNeighborhood(stn, gpi, connectivity, narrow, minWeight, maxWeight);
         SynapseGroup gpiThl = SynapseFactory.connectNeighborhood(gpi, thl, connectivity, narrow, minWeight, 0.2 * maxWeight);
-        network.addSynapseGroups(thlCtx, ctxStr, ctxStn, strGpi, stnGpi, gpiThl);
+        SynapseGroup st2Gpe = SynapseFactory.connectNeighborhood(st2, gpe, connectivity, narrow, minWeight, maxWeight);
+        SynapseGroup gpeStn = SynapseFactory.connectNeighborhood(gpe, stn, connectivity, narrow, minWeight, maxWeight);
+        SynapseGroup gpeGpi = SynapseFactory.connectNeighborhood(gpe, gpi, connectivity, narrow, minWeight, maxWeight);
+        SynapseGroup stnGpe = SynapseFactory.connectNeighborhood(stn, gpe, connectivity, narrow, minWeight, maxWeight);
+        SynapseGroup ctxSt2 = SynapseFactory.connectNeighborhood(ctx, st2, connectivity, narrow, minWeight, maxWeight);
+        SynapseGroup pfePfe = SynapseFactory.connectNeighborhood(pfe, pfe, connectivity, narrow, minWeight, maxWeight);
+        SynapseGroup pfePfi = SynapseFactory.connectNeighborhood(pfe, pfi, connectivity, narrow, minWeight, maxWeight);
+        SynapseGroup pfiPfe = SynapseFactory.connectNeighborhood(pfi, pfe, connectivity, wide, minWeight, maxWeight); // Sombrero connections here not wide TODO
+        SynapseGroup ctxPfe = SynapseFactory.connectNeighborhood(ctx, pfe, connectivity, wide, minWeight, maxWeight);
+        SynapseGroup pfeStr = SynapseFactory.connectNeighborhood(pfe, str, connectivity, narrow, minWeight, maxWeight);
+        SynapseGroup pfeSt2 = SynapseFactory.connectNeighborhood(pfe, st2, connectivity, narrow, minWeight, maxWeight);
+        network.addSynapseGroups(thlCtx, ctxStr, ctxStn, strGpi, stnGpi, gpiThl, st2Gpe, gpeStn, gpeGpi, stnGpe, ctxSt2,
+                pfePfe, pfePfi, pfiPfe, ctxPfe, ctxPfe, pfeStr, pfeSt2);
+        
+        // Set up learning for CTX-STR, CTX-ST2, CTX-PFE, PFE-CTX, PFE-STR, PFE-ST2
+        // Add SNc, and the connections to and from it, as well as the lower half of Chorley+Seth
+        // Add Cortex to VTA, and VTA is dopamine
+        // What excites dopamine? - we would need some chorley-seth type connections - Sen to DA but what excites DA?
+        
     }
     
     /** Setup a visualization of the network activity. */
