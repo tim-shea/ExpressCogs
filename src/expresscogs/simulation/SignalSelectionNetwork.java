@@ -197,8 +197,8 @@ public class SignalSelectionNetwork extends Application {
                     // Calculate the local field potential for an electrode in the subthalamic nucleus
                     double lfp = 0;
                     for (int i = 0; i < stn.getSize(); ++i) {
-                        DoubleMatrix c = stn.getExcitatoryConductance().add(stn.getInhibitoryConductance());
-                        lfp = c.divi(distanceToElectrode).sum();
+                        DoubleMatrix c = stn.getChangeInMembranePotential();
+                        lfp = c.div(distanceToElectrode).sum();
                     }
                     lfpPlot.bufferPoint("LFP", t, lfp);
                     

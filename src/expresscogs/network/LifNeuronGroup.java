@@ -83,6 +83,8 @@ public class LifNeuronGroup implements NeuronGroup {
         gE.put(gE.gt(4e-3), 4e-3);
         gI.put(gI.gt(4e-3), 4e-3);
         i.addi(gE).subi(gI);
+        
+        
         // dv = -vDecay * (v - eL) + i
         v.subi(vRest, dv).muli(-vDecay).addi(i);
         v.addi(dv);
@@ -112,10 +114,15 @@ public class LifNeuronGroup implements NeuronGroup {
     public DoubleMatrix getExcitatoryConductance() {
         return gE;
     }
-    
+
     @Override
     public DoubleMatrix getInhibitoryConductance() {
         return gI;
+    }
+
+    @Override
+    public DoubleMatrix getChangeInMembranePotential() {
+        return dv;
     }
 
     @Override

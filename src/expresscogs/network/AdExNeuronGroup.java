@@ -129,6 +129,11 @@ public class AdExNeuronGroup implements NeuronGroup {
     }
 
     @Override
+    public DoubleMatrix getChangeInMembranePotential() {
+        return dv;
+    }
+
+    @Override
     public DoubleMatrix getInputs() {
         return i;
     }

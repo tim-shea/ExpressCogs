@@ -22,6 +22,8 @@ public interface NeuronGroup {
 
     DoubleMatrix getExcitatoryConductance();
 
+    DoubleMatrix getChangeInMembranePotential();
+    
     DoubleMatrix getInhibitoryConductance();
 
     DoubleMatrix getInputs();
