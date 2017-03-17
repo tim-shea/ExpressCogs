@@ -4,17 +4,32 @@ import expresscogs.network.*;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.Slider;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
+
 import org.jblas.DoubleMatrix;
 import org.jblas.MatrixFunctions;
+import org.jblas.ranges.IntervalRange;
+import org.jblas.ranges.PointRange;
 
+import expresscogs.utility.BandPassFilter;
 import expresscogs.utility.HeatMap;
+import expresscogs.utility.SpikeRasterPlot;
 import expresscogs.utility.TimeSeriesPlot;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
 /**
@@ -49,13 +64,15 @@ public class SignalSelectionNetwork extends Application {
     private int tSteps = 100000;
     // Duration of simulation step in seconds
     private double dt = 0.001;
-    private double backgroundInput = 0.4e-3;
+    private double lowBackgroundInput = 0.2e-3;
+    private double highBackgroundInput = 0.4e-3;
     private int groupSize = 500;
     private double connectivity = 0.1;
-    private double narrow = 0.1;
+    private double narrow = 0.05;
     private double wide = 0.5;
     private double minWeight = 0;
     private double maxWeight = 1e-4;
+    private StimulusGenerator thlInput;
 
     // Neuron groups
     private NeuronGroup thl;
@@ -65,16 +82,15 @@ public class SignalSelectionNetwork extends Application {
     private NeuronGroup gpi;
     private NeuronGroup gpe;
     private NeuronGroup st2;
-    private NeuronGroup pfe;
-    private NeuronGroup pfi;
     
     // Buffered data for visualization
     private DoubleMatrix spikeCounts;
     
     // Charts for visualization
-    private TimeSeriesPlot raster;
+    private SpikeRasterPlot raster;
     private TimeSeriesPlot lfpPlot;
     private DoubleMatrix distanceToElectrode;
+    private DoubleMatrix record;
     
     @Override
     public void start(Stage stage) throws Exception {
@@ -89,45 +105,32 @@ public class SignalSelectionNetwork extends Application {
         network = new Network();
         
         // Create the neuron groups and add them to the network
-        InputGenerator thlInput = new StimulusGenerator();
+        thlInput = new StimulusGenerator();
         thl = NeuronFactory.createLifExcitatory("THL", groupSize, thlInput);
-        ctx = NeuronFactory.createLifExcitatory("CTX", groupSize, backgroundInput);
-        // STR and ST2 = Go and NoGo
-        str = NeuronFactory.createLifInhibitory("STR", groupSize, backgroundInput);
-        stn = NeuronFactory.createLifExcitatory("STN", groupSize, backgroundInput);
-        gpi = NeuronFactory.createLifInhibitory("GPI", groupSize, backgroundInput);
-        gpe = NeuronFactory.createLifInhibitory("GPE", groupSize, backgroundInput);
-        st2 = NeuronFactory.createLifInhibitory("ST2", groupSize, backgroundInput);
-        pfe = NeuronFactory.createLifExcitatory("PFE", groupSize, backgroundInput);
-        pfi = NeuronFactory.createLifInhibitory("PFI", groupSize, backgroundInput);
-        network.addNeuronGroups(thl, ctx, str, stn, gpi, gpe, st2, pfe, pfi);
+        ctx = NeuronFactory.createLifExcitatory("CTX", groupSize, highBackgroundInput);
+        str = NeuronFactory.createLifInhibitory("STR", groupSize, lowBackgroundInput);
+        st2 = NeuronFactory.createLifInhibitory("ST2", groupSize, lowBackgroundInput);
+        stn = NeuronFactory.createLifExcitatory("STN", groupSize, lowBackgroundInput);
+        gpi = NeuronFactory.createLifInhibitory("GPI", groupSize / 4, highBackgroundInput);
+        gpe = NeuronFactory.createLifInhibitory("GPE", groupSize / 4, highBackgroundInput);
+        network.addNeuronGroups(thl, ctx, str, st2, stn, gpi, gpe);
         
-        // Create the synapse groups and add them to the network
+        // Setup the selection pathway synapse groups
         SynapseGroup thlCtx = SynapseFactory.connectNeighborhood(thl, ctx, connectivity, narrow, minWeight, maxWeight);
         SynapseGroup ctxStr = SynapseFactory.connectNeighborhood(ctx, str, connectivity, narrow, minWeight, maxWeight);
-        SynapseGroup ctxStn = SynapseFactory.connectNeighborhood(ctx, stn, connectivity, wide, minWeight, maxWeight);
-        SynapseGroup strGpi = SynapseFactory.connectNeighborhood(str, gpi, connectivity, narrow, minWeight, 0.5 * maxWeight);
-        SynapseGroup stnGpi = SynapseFactory.connectNeighborhood(stn, gpi, connectivity, narrow, minWeight, maxWeight);
-        SynapseGroup gpiThl = SynapseFactory.connectNeighborhood(gpi, thl, connectivity, narrow, minWeight, 0.2 * maxWeight);
-        SynapseGroup st2Gpe = SynapseFactory.connectNeighborhood(st2, gpe, connectivity, narrow, minWeight, maxWeight);
-        SynapseGroup gpeStn = SynapseFactory.connectNeighborhood(gpe, stn, connectivity, narrow, minWeight, maxWeight);
-        SynapseGroup gpeGpi = SynapseFactory.connectNeighborhood(gpe, gpi, connectivity, narrow, minWeight, maxWeight);
-        SynapseGroup stnGpe = SynapseFactory.connectNeighborhood(stn, gpe, connectivity, narrow, minWeight, maxWeight);
+        SynapseGroup ctxStn = SynapseFactory.connectNeighborhood(ctx, stn, connectivity, wide, minWeight, 2 * maxWeight);
+        SynapseGroup strGpi = SynapseFactory.connectNeighborhood(str, gpi, connectivity, narrow, minWeight, 0.75 * maxWeight);
+        SynapseGroup stnGpi = SynapseFactory.connectNeighborhood(stn, gpi, connectivity, narrow, minWeight, 2 * maxWeight);
+        SynapseGroup gpiThl = SynapseFactory.connectNeighborhood(gpi, thl, connectivity, narrow, minWeight, 0.75 * maxWeight);
+        network.addSynapseGroups(thlCtx, ctxStr, ctxStn, strGpi, stnGpi, gpiThl);
+        
+        // Setup the control pathway synapse groups
         SynapseGroup ctxSt2 = SynapseFactory.connectNeighborhood(ctx, st2, connectivity, narrow, minWeight, maxWeight);
-        SynapseGroup pfePfe = SynapseFactory.connectNeighborhood(pfe, pfe, connectivity, narrow, minWeight, maxWeight);
-        SynapseGroup pfePfi = SynapseFactory.connectNeighborhood(pfe, pfi, connectivity, narrow, minWeight, maxWeight);
-        SynapseGroup pfiPfe = SynapseFactory.connectNeighborhood(pfi, pfe, connectivity, wide, minWeight, maxWeight); // Sombrero connections here not wide TODO
-        SynapseGroup ctxPfe = SynapseFactory.connectNeighborhood(ctx, pfe, connectivity, wide, minWeight, maxWeight);
-        SynapseGroup pfeStr = SynapseFactory.connectNeighborhood(pfe, str, connectivity, narrow, minWeight, maxWeight);
-        SynapseGroup pfeSt2 = SynapseFactory.connectNeighborhood(pfe, st2, connectivity, narrow, minWeight, maxWeight);
-        network.addSynapseGroups(thlCtx, ctxStr, ctxStn, strGpi, stnGpi, gpiThl, st2Gpe, gpeStn, gpeGpi, stnGpe, ctxSt2,
-                pfePfe, pfePfi, pfiPfe, ctxPfe, ctxPfe, pfeStr, pfeSt2);
-        
-        // Set up learning for CTX-STR, CTX-ST2, CTX-PFE, PFE-CTX, PFE-STR, PFE-ST2
-        // Add SNc, and the connections to and from it, as well as the lower half of Chorley+Seth
-        // Add Cortex to VTA, and VTA is dopamine
-        // What excites dopamine? - we would need some chorley-seth type connections - Sen to DA but what excites DA?
-        
+        SynapseGroup st2Gpe = SynapseFactory.connectNeighborhood(st2, gpe, connectivity, narrow, minWeight, maxWeight);
+        SynapseGroup stnGpe = SynapseFactory.connectNeighborhood(stn, gpe, connectivity, narrow, minWeight, 1 * maxWeight);
+        SynapseGroup gpeStn = SynapseFactory.connectNeighborhood(gpe, stn, connectivity, narrow, minWeight, 1 * maxWeight);
+        SynapseGroup gpeGpi = SynapseFactory.connectNeighborhood(gpe, gpi, connectivity, narrow, minWeight, 1 * maxWeight);
+        network.addSynapseGroups(st2Gpe, gpeStn, gpeGpi, stnGpe, ctxSt2);
     }
     
     /** Setup a visualization of the network activity. */
@@ -135,28 +138,92 @@ public class SignalSelectionNetwork extends Application {
         VBox container = new VBox();
         container.setPadding(new Insets(10, 10, 10, 10));
         container.setSpacing(10);
-        Scene scene = new Scene(container, 800, 600);
+        Scene scene = new Scene(container, 1200, 800);
         scene.getStylesheets().add("styles/plotstyles.css");
         stage.setScene(scene);
 
         FlowPane toolbar = new FlowPane();
         toolbar.setHgap(10);
+        
         Button runButton = new Button("run");
         runButton.setOnAction(event -> pauseSimulation = false);
+        
         Button pauseButton = new Button("pause");
         pauseButton.setOnAction(event -> pauseSimulation = true);
-        toolbar.getChildren().addAll(runButton, pauseButton);
+        
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Save As...");
+        fileChooser.setInitialDirectory(new File(System.getProperty("user.home") + "/desktop/"));
+        fileChooser.setInitialFileName("lfp_data.csv");
+        Button saveButton = new Button("save");
+        saveButton.setOnAction(event -> {
+            File file = fileChooser.showSaveDialog(stage);
+            if (file != null) {
+                NumberFormat format = DecimalFormat.getNumberInstance();
+                try {
+                    BufferedWriter writer = new BufferedWriter(new FileWriter(file));
+                    writer.write("t,in,lfp,theta");
+                    writer.newLine();
+                    for (int i = 0; i < record.rows; ++i) {
+                        writer.write(format.format(record.get(i, 0)) + ',');
+                        writer.write(format.format(record.get(i, 1)) + ',');
+                        writer.write(format.format(record.get(i, 2)) + ',');
+                        writer.write(format.format(record.get(i, 3)));
+                        writer.newLine();
+                    }
+                    writer.flush();
+                    writer.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+        
+        Label intensityLabel = new Label("Intensity");
+        Slider intensitySlider = new Slider();
+        intensitySlider.setValue(thlInput.getIntensity());
+        intensitySlider.setMin(0);
+        intensitySlider.setMax(5e-3);
+        intensitySlider.valueProperty().addListener((observable, oldValue, newValue) -> {
+            thlInput.setIntensity(newValue.doubleValue());
+        });
+        
+        Label widthLabel = new Label("Width");
+        Slider widthSlider = new Slider();
+        widthSlider.setValue(thlInput.getWidth());
+        widthSlider.setMin(0.01);
+        widthSlider.setMax(0.25);
+        widthSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
+            thlInput.setWidth(newValue.doubleValue());
+        });
+        
+        Label durationLabel = new Label("Duration");
+        Slider durationSlider = new Slider();
+        durationSlider.setValue(thlInput.getDuration() / 1000.0);
+        durationSlider.setMin(0.25);
+        durationSlider.setMax(1.0);
+        durationSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
+            thlInput.setDuration((int)(1000 * newValue.doubleValue()));
+        });
+        
+        Label intervalLabel = new Label("Interval");
+        Slider intervalSlider = new Slider();
+        intervalSlider.setValue(thlInput.getInterval() / 1000.0);
+        intervalSlider.setMin(0.0);
+        intervalSlider.setMax(1.0);
+        intervalSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
+            thlInput.setInterval((int)(1000 * newValue.doubleValue()));
+        });
+        
+        toolbar.getChildren().addAll(runButton, pauseButton, saveButton, intensityLabel, intensitySlider,
+                widthLabel, widthSlider, durationLabel, durationSlider, intervalLabel, intervalSlider);
         container.getChildren().add(toolbar);
         
         TimeSeriesPlot.init(container);
-        raster = TimeSeriesPlot.scatter();
-        raster.addSeries("THL");
-        raster.addSeries("CTX");
-        raster.addSeries("STR");
-        raster.addSeries("STN");
-        raster.addSeries("GPI");
+        raster = new SpikeRasterPlot(network);
         lfpPlot = TimeSeriesPlot.line();
         lfpPlot.addSeries("LFP");
+        lfpPlot.addSeries("Theta");
         lfpPlot.setAutoRanging(false, true);
         DoubleMatrix dx = stn.getXPosition().sub(0.5);
         dx.muli(dx);
@@ -172,10 +239,14 @@ public class SignalSelectionNetwork extends Application {
         waitForSync = false;
         pauseSimulation = true;
         Task<Void> task = new Task<Void>() {
-            DoubleMatrix sample = DoubleMatrix.rand(groupSize).lti(0.2);
-            
             @Override
             protected Void call() throws Exception {
+                int windowLength = 67;
+                double[] filterWeights = BandPassFilter.sincFilter2(windowLength, 4, 8, 1000, BandPassFilter.filterType.BAND_PASS);
+                filterWeights = BandPassFilter.createWindow(filterWeights, null, windowLength, BandPassFilter.windowType.HAMMING);
+                DoubleMatrix lfpFilter = new DoubleMatrix(filterWeights);
+                DoubleMatrix lfpData = new DoubleMatrix(windowLength);
+                record = new DoubleMatrix(tSteps, 4);
                 for (int step = 0; step < tSteps; step += 1) {
                     while (pauseSimulation) {
                         Thread.sleep(50);
@@ -188,11 +259,7 @@ public class SignalSelectionNetwork extends Application {
                         e.printStackTrace();
                     }
                     
-                    raster.bufferPoints("THL", t, thl.getXPosition().get(thl.getSpikes().and(sample)).data);
-                    raster.bufferPoints("CTX", t, ctx.getXPosition().get(ctx.getSpikes().and(sample)).add(1).data);
-                    raster.bufferPoints("STR", t, str.getXPosition().get(str.getSpikes().and(sample)).add(2).data);
-                    raster.bufferPoints("STN", t, stn.getXPosition().get(stn.getSpikes().and(sample)).add(3).data);
-                    raster.bufferPoints("GPI", t, gpi.getXPosition().get(gpi.getSpikes().and(sample)).add(4).data);
+                    raster.bufferSpikes(t);
                     
                     // Calculate the local field potential for an electrode in the subthalamic nucleus
                     double lfp = 0;
@@ -201,14 +268,24 @@ public class SignalSelectionNetwork extends Application {
                         lfp = c.div(distanceToElectrode).sum();
                     }
                     lfpPlot.bufferPoint("LFP", t, lfp);
+                    record.put(step, 0, t);
+                    record.put(step, 1, thlInput.getState());
+                    record.put(step, 2, lfp);
                     
-                    if (step % 25 == 0 || step == tSteps - 1) {
+                    lfpData.put(new IntervalRange(0, windowLength - 1), new PointRange(0),
+                            lfpData.get(new IntervalRange(1, windowLength), new PointRange(0)));
+                    lfpData.put(windowLength - 1, lfp);
+                    double theta = lfpData.dot(lfpFilter);
+                    record.put(step, 3, theta);
+                    
+                    lfpPlot.bufferPoint("Theta", t, theta);
+                    
+                    if (step % 10 == 0 || step == tSteps - 1) {
                         waitForSync = true;
                         Platform.runLater(() -> {
-                            raster.addPoints();
-                            raster.setLimits(t - 0.5, t, 0, 5);
+                            raster.updatePlot(t);
                             lfpPlot.addPoints();
-                            lfpPlot.setXLimits(t - 0.5, t);
+                            lfpPlot.setXLimits(t - 0.25, t);
                             waitForSync = false;
                         });
                         while (waitForSync) {
@@ -220,7 +297,9 @@ public class SignalSelectionNetwork extends Application {
             }
         };
         Thread thread = new Thread(task);
-        stage.setOnCloseRequest(event -> thread.interrupt());
+        stage.setOnCloseRequest(event -> {
+            thread.interrupt();
+        });
         thread.start();
     }
 }

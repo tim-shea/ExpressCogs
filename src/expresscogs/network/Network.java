@@ -13,6 +13,10 @@ public class Network {
         }
     }
     
+    public List<NeuronGroup> getNeuronGroups() {
+        return neuronGroups;
+    }
+    
     public NeuronGroup getNeuronGroup(int index) {
         return neuronGroups.get(index);
     }

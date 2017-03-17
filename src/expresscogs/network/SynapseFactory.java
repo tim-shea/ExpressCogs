@@ -89,4 +89,9 @@ public final class SynapseFactory {
         synapses.getDelays().copy(DoubleMatrix.rand(synapses.getPreIndex().length));
         MatrixFunctions.floori(synapses.getDelays().muli(maxDelay));
     }
+    
+    private static void fixDelays(DelaySynapseGroup synapses, int delay) {
+        synapses.getDelays().copy(DoubleMatrix.ones(synapses.getPreIndex().length));
+        synapses.getDelays().muli(delay);
+    }
 }

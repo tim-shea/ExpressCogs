@@ -11,6 +11,8 @@ public class BufferedDataSeries {
     private Series<Number,Number> series = new Series<Number,Number>();
     private List<Data<Number,Number>> buffer = new ArrayList<Data<Number,Number>>();
     private int maxLength = 1000;
+    private double minXValue = 0.0;
+    private boolean useMinXValue = false;
     
     public BufferedDataSeries(String name) {
         series.setName(name);
@@ -22,6 +24,15 @@ public class BufferedDataSeries {
     
     public void setMaxLength(int value) {
         maxLength = value;
+    }
+    
+    public double getMinXValue() {
+        return minXValue;
+    }
+    
+    public void setMinXValue(double value) {
+        minXValue = value;
+        useMinXValue = true;
     }
     
     public Series<Number,Number> getSeries() {
@@ -36,8 +47,13 @@ public class BufferedDataSeries {
         ObservableList<Data<Number,Number>> data = series.getData();
         data.addAll(buffer);
         buffer.clear();
-        if (data.size() > maxLength) {
+        if (maxLength > 0 && data.size() > maxLength) {
             data.remove(0, data.size() - maxLength);
+        }
+        if (useMinXValue) {
+            data.removeIf(point -> {
+                return point.getXValue().doubleValue() < minXValue;
+            });
         }
     }
 }
