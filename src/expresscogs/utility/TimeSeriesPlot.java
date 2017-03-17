@@ -55,10 +55,11 @@ public class TimeSeriesPlot {
         container.getChildren().add(chart);
     }
     
-    public void addSeries(String label) {
+    public BufferedDataSeries addSeries(String label) {
         BufferedDataSeries buffer = new BufferedDataSeries(label);
         chart.getData().add(buffer.getSeries());
         data.put(label, buffer);
+        return buffer;
     }
     
     public void bufferPoint(String seriesLabel, double t, double x) {

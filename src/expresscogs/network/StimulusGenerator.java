@@ -22,6 +22,7 @@ public class StimulusGenerator implements InputGenerator {
     private int interval = 1000;
     private double scale = 3e-3;
     private double width = 0.05;
+    private int state = 0;
     private int step = 0;
     
     /** Return the scale of random noise added to the stimulus each update. */
@@ -90,14 +91,26 @@ public class StimulusGenerator implements InputGenerator {
     @Override
     public DoubleMatrix generate(NeuronGroup neurons) {
         if (step % (duration + interval) == 0) {
-            double x = Math.random();
-            stimulus = MatrixFunctions.absi(neurons.getXPosition().sub(x)).subi(width).negi();
-            stimulus.put(stimulus.lt(0), 0);
-            stimulus.muli(scale / width);
+            double x1 = Math.random();
+            DoubleMatrix stimulus1 = MatrixFunctions.absi(neurons.getXPosition().sub(x1)).subi(width).negi();
+            stimulus1.put(stimulus1.lt(0), 0);
+            stimulus1.muli(scale / width);
+            stimulus = stimulus1;
+            //double x2 = Math.random();
+            //DoubleMatrix stimulus2 = MatrixFunctions.absi(neurons.getXPosition().sub(x2)).subi(width).negi();
+            //stimulus2.put(stimulus2.lt(0), 0);
+            //stimulus2.muli(0.5 * scale / width);
+            //stimulus = stimulus1.addi(stimulus2);
+            state = 1;
         } else if (step % (duration + interval) == duration) {
             stimulus.fill(0);
+            state = 0;
         }
         ++step;
         return stimulus.add(DoubleMatrix.rand(neurons.getSize()).muli(noise));
+    }
+    
+    public int getState() {
+        return state;
     }
 }

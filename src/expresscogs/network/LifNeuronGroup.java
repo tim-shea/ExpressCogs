@@ -30,7 +30,7 @@ public class LifNeuronGroup implements NeuronGroup {
     private double vRest = -70e-3;
     private double vThresh = -50e-3;
     private double gEDecay = 0.1;
-    private double gIDecay = 0.05;
+    private double gIDecay = 0.1;
     private InputGenerator generator;
 
     public LifNeuronGroup(String name, int size, boolean excitatory, InputGenerator generator) {
