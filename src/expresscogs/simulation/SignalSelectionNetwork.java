@@ -29,6 +29,7 @@ import expresscogs.utility.TimeSeriesPlot;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
 /**
@@ -143,10 +144,40 @@ public class SignalSelectionNetwork extends Application {
 
         FlowPane toolbar = new FlowPane();
         toolbar.setHgap(10);
+        
         Button runButton = new Button("run");
         runButton.setOnAction(event -> pauseSimulation = false);
+        
         Button pauseButton = new Button("pause");
         pauseButton.setOnAction(event -> pauseSimulation = true);
+        
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Save As...");
+        fileChooser.setInitialDirectory(new File(System.getProperty("user.home") + "/desktop/"));
+        fileChooser.setInitialFileName("lfp_data.csv");
+        Button saveButton = new Button("save");
+        saveButton.setOnAction(event -> {
+            File file = fileChooser.showSaveDialog(stage);
+            if (file != null) {
+                NumberFormat format = DecimalFormat.getNumberInstance();
+                try {
+                    BufferedWriter writer = new BufferedWriter(new FileWriter(file));
+                    writer.write("t,in,lfp,theta");
+                    writer.newLine();
+                    for (int i = 0; i < record.rows; ++i) {
+                        writer.write(format.format(record.get(i, 0)) + ',');
+                        writer.write(format.format(record.get(i, 1)) + ',');
+                        writer.write(format.format(record.get(i, 2)) + ',');
+                        writer.write(format.format(record.get(i, 3)));
+                        writer.newLine();
+                    }
+                    writer.flush();
+                    writer.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
         
         Label intensityLabel = new Label("Intensity");
         Slider intensitySlider = new Slider();
@@ -184,7 +215,7 @@ public class SignalSelectionNetwork extends Application {
             thlInput.setInterval((int)(1000 * newValue.doubleValue()));
         });
         
-        toolbar.getChildren().addAll(runButton, pauseButton, intensityLabel, intensitySlider,
+        toolbar.getChildren().addAll(runButton, pauseButton, saveButton, intensityLabel, intensitySlider,
                 widthLabel, widthSlider, durationLabel, durationSlider, intervalLabel, intervalSlider);
         container.getChildren().add(toolbar);
         
@@ -215,7 +246,7 @@ public class SignalSelectionNetwork extends Application {
                 filterWeights = BandPassFilter.createWindow(filterWeights, null, windowLength, BandPassFilter.windowType.HAMMING);
                 DoubleMatrix lfpFilter = new DoubleMatrix(filterWeights);
                 DoubleMatrix lfpData = new DoubleMatrix(windowLength);
-                record = new DoubleMatrix(tSteps, 3);
+                record = new DoubleMatrix(tSteps, 4);
                 for (int step = 0; step < tSteps; step += 1) {
                     while (pauseSimulation) {
                         Thread.sleep(50);
@@ -237,14 +268,15 @@ public class SignalSelectionNetwork extends Application {
                         lfp = c.divi(distanceToElectrode).sum();
                     }
                     lfpPlot.bufferPoint("LFP", t, lfp);
-                    record.put(step, 0, thlInput.getState());
-                    record.put(step, 1, lfp);
+                    record.put(step, 0, t);
+                    record.put(step, 1, thlInput.getState());
+                    record.put(step, 2, lfp);
                     
                     lfpData.put(new IntervalRange(0, windowLength - 1), new PointRange(0),
                             lfpData.get(new IntervalRange(1, windowLength), new PointRange(0)));
                     lfpData.put(windowLength - 1, lfp);
                     double theta = lfpData.dot(lfpFilter);
-                    record.put(step, 2, theta);
+                    record.put(step, 3, theta);
                     
                     lfpPlot.bufferPoint("Theta", t, theta);
                     
@@ -267,21 +299,6 @@ public class SignalSelectionNetwork extends Application {
         Thread thread = new Thread(task);
         stage.setOnCloseRequest(event -> {
             thread.interrupt();
-            File file = new File("C:/Users/Tim/Desktop/lfp_data.csv");
-            NumberFormat format = DecimalFormat.getNumberInstance();
-            try {
-                BufferedWriter writer = new BufferedWriter(new FileWriter(file));
-                writer.write("lfp");
-                writer.newLine();
-                for (int i = 0; i < record.length; ++i) {
-                    writer.write(format.format(record.get(i)));
-                    writer.newLine();
-                }
-                writer.flush();
-                writer.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
         });
         thread.start();
     }
