@@ -16,11 +16,12 @@ import expresscogs.network.NeuronGroup;
  *
  */
 public class StimulusGenerator implements InputGenerator {
-    private DoubleMatrix stimulus;
+    private DoubleMatrix stimuli;
+    private int numberStimuli = 2;
     private double noise = 0.5e-3;
     private int duration = 500;
     private int interval = 1000;
-    private double scale = 3e-3;
+    private double intensity = 0.5e-3;
     private double width = 0.05;
     private int state = 0;
     private int step = 0;
@@ -56,13 +57,13 @@ public class StimulusGenerator implements InputGenerator {
     }
     
     /** Return the scale of activation at the center of the stimulus. */
-    public double getScale() {
-        return scale;
+    public double getIntensity() {
+        return intensity;
     }
     
     /** Assign the scale of activation at the center of the stimulus. */
-    public void setScale(double value) {
-        scale = value;
+    public void setIntensity(double value) {
+        intensity = value;
     }
     
     /** Return the width of the stimulus in neuronal coordinates i.e. the distance from the
@@ -79,35 +80,33 @@ public class StimulusGenerator implements InputGenerator {
     
     /** Return the signal-to-noise ratio of the generated input values. */
     public double getSignalToNoiseRatio() {
-        return scale / noise;
+        return intensity / noise;
     }
     
     /** Assign the signal-to-noise ratio of the generated input values by adjusting the stimulus
      * scale according to the magnitude of the noise. */
     public void setSignalToNoiseRatio(double value) {
-        scale = value * noise;
+        intensity = value * noise;
     }
     
     @Override
     public DoubleMatrix generate(NeuronGroup neurons) {
         if (step % (duration + interval) == 0) {
-            double x1 = Math.random();
-            DoubleMatrix stimulus1 = MatrixFunctions.absi(neurons.getXPosition().sub(x1)).subi(width).negi();
-            stimulus1.put(stimulus1.lt(0), 0);
-            stimulus1.muli(scale / width);
-            stimulus = stimulus1;
-            //double x2 = Math.random();
-            //DoubleMatrix stimulus2 = MatrixFunctions.absi(neurons.getXPosition().sub(x2)).subi(width).negi();
-            //stimulus2.put(stimulus2.lt(0), 0);
-            //stimulus2.muli(0.5 * scale / width);
-            //stimulus = stimulus1.addi(stimulus2);
+            stimuli = DoubleMatrix.zeros(neurons.getSize());
+            for (int i = 0; i < numberStimuli; ++i) {
+                double x = Math.random();
+                DoubleMatrix stimulus = MatrixFunctions.absi(neurons.getXPosition().sub(x)).subi(width).negi();
+                stimulus.put(stimulus.lt(0), 0);
+                stimulus.muli(intensity / width);
+                stimuli.addi(stimulus);
+            }
             state = 1;
         } else if (step % (duration + interval) == duration) {
-            stimulus.fill(0);
+            stimuli.fill(intensity / neurons.getSize());
             state = 0;
         }
         ++step;
-        return stimulus.add(DoubleMatrix.rand(neurons.getSize()).muli(noise));
+        return stimuli.add(DoubleMatrix.rand(neurons.getSize()).muli(noise));
     }
     
     public int getState() {

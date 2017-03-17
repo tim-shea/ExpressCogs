@@ -4,6 +4,8 @@ import expresscogs.network.*;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.Slider;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
@@ -135,7 +137,7 @@ public class SignalSelectionNetwork extends Application {
         VBox container = new VBox();
         container.setPadding(new Insets(10, 10, 10, 10));
         container.setSpacing(10);
-        Scene scene = new Scene(container, 800, 600);
+        Scene scene = new Scene(container, 1200, 800);
         scene.getStylesheets().add("styles/plotstyles.css");
         stage.setScene(scene);
 
@@ -145,7 +147,45 @@ public class SignalSelectionNetwork extends Application {
         runButton.setOnAction(event -> pauseSimulation = false);
         Button pauseButton = new Button("pause");
         pauseButton.setOnAction(event -> pauseSimulation = true);
-        toolbar.getChildren().addAll(runButton, pauseButton);
+        
+        Label intensityLabel = new Label("Intensity");
+        Slider intensitySlider = new Slider();
+        intensitySlider.setValue(thlInput.getIntensity());
+        intensitySlider.setMin(0);
+        intensitySlider.setMax(5e-3);
+        intensitySlider.valueProperty().addListener((observable, oldValue, newValue) -> {
+            thlInput.setIntensity(newValue.doubleValue());
+        });
+        
+        Label widthLabel = new Label("Width");
+        Slider widthSlider = new Slider();
+        widthSlider.setValue(thlInput.getWidth());
+        widthSlider.setMin(0.01);
+        widthSlider.setMax(0.25);
+        widthSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
+            thlInput.setWidth(newValue.doubleValue());
+        });
+        
+        Label durationLabel = new Label("Duration");
+        Slider durationSlider = new Slider();
+        durationSlider.setValue(thlInput.getDuration() / 1000.0);
+        durationSlider.setMin(0.25);
+        durationSlider.setMax(1.0);
+        durationSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
+            thlInput.setDuration((int)(1000 * newValue.doubleValue()));
+        });
+        
+        Label intervalLabel = new Label("Interval");
+        Slider intervalSlider = new Slider();
+        intervalSlider.setValue(thlInput.getInterval() / 1000.0);
+        intervalSlider.setMin(0.0);
+        intervalSlider.setMax(1.0);
+        intervalSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
+            thlInput.setInterval((int)(1000 * newValue.doubleValue()));
+        });
+        
+        toolbar.getChildren().addAll(runButton, pauseButton, intensityLabel, intensitySlider,
+                widthLabel, widthSlider, durationLabel, durationSlider, intervalLabel, intervalSlider);
         container.getChildren().add(toolbar);
         
         TimeSeriesPlot.init(container);
