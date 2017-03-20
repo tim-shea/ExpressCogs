@@ -33,4 +33,10 @@ public interface SynapseGroup {
 
     /** Get a vector of post synaptic conductances. */
     DoubleMatrix getConductances(int step);
+    
+    /** Get the scale of the synaptic weights. */
+    double getWeightScale();
+    
+    /** Set the scale of the synaptic weights. */
+    void setWeightScale(double value);
 }

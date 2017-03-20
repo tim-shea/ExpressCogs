@@ -4,21 +4,10 @@ import javafx.scene.Cursor;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Region;
 
-/**
- * {@link ResizeListener} can be used to add mouse listeners to a {@link Region}
- * and make it resizable by the user by clicking and dragging the border in the
- * same way as a window.
- * <p>
- * Only height resizing is currently implemented. Usage: <pre>DragResizer.makeResizable(myAnchorPane);</pre>
- *
- * @author atill
- *
- */
 public class ResizeListener {
     public enum Mode {
         HORIZONTAL,
-        VERTICAL,
-        BOTH
+        VERTICAL
     }
 
     public static void makeResizable(Region region, Mode mode) {
@@ -27,6 +16,11 @@ public class ResizeListener {
         region.setOnMouseDragged(listener::mouseDragged);
         region.setOnMouseMoved(listener::mouseOver);
         region.setOnMouseReleased(listener::mouseReleased);
+        if (mode == Mode.HORIZONTAL) {
+            region.setStyle("-fx-border-color: transparent darkgray transparent transparent");
+        } else {
+            region.setStyle("-fx-border-color: transparent transparent darkgray transparent");
+        }
     }
 
     private static final int RESIZE_MARGIN = 16;
@@ -52,25 +46,31 @@ public class ResizeListener {
 
     protected void mouseOver(MouseEvent event) {
         if (isInDraggableZone(event) || dragging) {
-            region.setCursor(Cursor.SE_RESIZE);
+            if (mode == Mode.HORIZONTAL) {
+                region.setCursor(Cursor.E_RESIZE);
+            } else {
+                region.setCursor(Cursor.S_RESIZE);
+            }
         } else {
             region.setCursor(Cursor.DEFAULT);
         }
     }
 
     protected boolean isInDraggableZone(MouseEvent event) {
-        return (event.getY() > (region.getHeight() - RESIZE_MARGIN) &&
-                event.getX() > (region.getWidth() - RESIZE_MARGIN));
+        if (mode == Mode.HORIZONTAL) {
+            return event.getX() > (region.getWidth() - RESIZE_MARGIN); 
+        } else {
+            return event.getY() > (region.getHeight() - RESIZE_MARGIN);
+        }
     }
 
     protected void mouseDragged(MouseEvent event) {
         if (dragging) {
-            if (mode == Mode.HORIZONTAL || mode == Mode.BOTH) {
+            if (mode == Mode.HORIZONTAL) {
                 region.setMinWidth(region.getMinWidth() + (event.getX() - x));
                 region.setMaxWidth(region.getMaxWidth() + (event.getX() - x));
                 x = event.getX();
-            }
-            if (mode == Mode.VERTICAL || mode == Mode.BOTH) {
+            } else {
                 region.setMinHeight(region.getMinHeight() + (event.getY() - y));
                 region.setMaxHeight(region.getMaxHeight() + (event.getY() - y));
                 y = event.getY();
@@ -81,15 +81,14 @@ public class ResizeListener {
     protected void mousePressed(MouseEvent event) {
         if (isInDraggableZone(event)) {
             dragging = true;
-            if (mode == Mode.HORIZONTAL || mode == Mode.BOTH) {
+            if (mode == Mode.HORIZONTAL) {
                 if (!initMinWidth) {
                     region.setMinWidth(region.getWidth());
                     region.setMaxWidth(region.getWidth());
                     initMinWidth = true;
                 }
                 x = event.getX();
-            }
-            if (mode == Mode.VERTICAL || mode == Mode.BOTH) {
+            } else {
                 if (!initMinHeight) {
                     region.setMinHeight(region.getHeight());
                     region.setMaxHeight(region.getHeight());

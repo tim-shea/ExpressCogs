@@ -1,13 +1,18 @@
 package expresscogs.simulation;
 
+import expresscogs.gui.ResizingSeparator;
+import expresscogs.gui.StimulusGeneratorTool;
+import expresscogs.gui.SynapseScalingTool;
 import expresscogs.network.*;
 import javafx.geometry.Insets;
+import javafx.geometry.Orientation;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.Slider;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.ScrollPane.ScrollBarPolicy;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
 import java.io.BufferedWriter;
@@ -18,12 +23,7 @@ import java.text.DecimalFormat;
 import java.text.NumberFormat;
 
 import org.jblas.DoubleMatrix;
-import org.jblas.MatrixFunctions;
-import org.jblas.ranges.IntervalRange;
-import org.jblas.ranges.PointRange;
-
-import expresscogs.utility.BandPassFilter;
-import expresscogs.utility.HeatMap;
+import expresscogs.utility.LocalFieldPotentialPlot;
 import expresscogs.utility.SpikeRasterPlot;
 import expresscogs.utility.TimeSeriesPlot;
 import javafx.application.Application;
@@ -72,7 +72,7 @@ public class SignalSelectionNetwork extends Application {
     private double wide = 0.5;
     private double minWeight = 0;
     private double maxWeight = 1e-4;
-    private StimulusGenerator thlInput;
+    private ContinuousStimulusGenerator thlInput;
 
     // Neuron groups
     private NeuronGroup thl;
@@ -83,13 +83,9 @@ public class SignalSelectionNetwork extends Application {
     private NeuronGroup gpe;
     private NeuronGroup st2;
     
-    // Buffered data for visualization
-    private DoubleMatrix spikeCounts;
-    
     // Charts for visualization
     private SpikeRasterPlot raster;
-    private TimeSeriesPlot lfpPlot;
-    private DoubleMatrix distanceToElectrode;
+    private LocalFieldPotentialPlot lfpPlot;
     private DoubleMatrix record;
     
     @Override
@@ -105,40 +101,40 @@ public class SignalSelectionNetwork extends Application {
         network = new Network();
         
         // Create the neuron groups and add them to the network
-        thlInput = new StimulusGenerator();
+        thlInput = new ContinuousStimulusGenerator();
         thl = NeuronFactory.createLifExcitatory("THL", groupSize, thlInput);
         ctx = NeuronFactory.createLifExcitatory("CTX", groupSize, highBackgroundInput);
         str = NeuronFactory.createLifInhibitory("STR", groupSize, lowBackgroundInput);
         st2 = NeuronFactory.createLifInhibitory("ST2", groupSize, lowBackgroundInput);
         stn = NeuronFactory.createLifExcitatory("STN", groupSize, lowBackgroundInput);
-        gpi = NeuronFactory.createLifInhibitory("GPI", groupSize / 4, highBackgroundInput);
+        gpi = NeuronFactory.createLifInhibitory("GPI", groupSize, lowBackgroundInput);
         gpe = NeuronFactory.createLifInhibitory("GPE", groupSize / 4, highBackgroundInput);
         network.addNeuronGroups(thl, ctx, str, st2, stn, gpi, gpe);
         
         // Setup the selection pathway synapse groups
         SynapseGroup thlCtx = SynapseFactory.connectNeighborhood(thl, ctx, connectivity, narrow, minWeight, maxWeight);
-        SynapseGroup ctxStr = SynapseFactory.connectNeighborhood(ctx, str, connectivity, narrow, minWeight, maxWeight);
-        SynapseGroup ctxStn = SynapseFactory.connectNeighborhood(ctx, stn, connectivity, wide, minWeight, 2 * maxWeight);
-        SynapseGroup strGpi = SynapseFactory.connectNeighborhood(str, gpi, connectivity, narrow, minWeight, 0.75 * maxWeight);
-        SynapseGroup stnGpi = SynapseFactory.connectNeighborhood(stn, gpi, connectivity, narrow, minWeight, 2 * maxWeight);
-        SynapseGroup gpiThl = SynapseFactory.connectNeighborhood(gpi, thl, connectivity, narrow, minWeight, 0.75 * maxWeight);
+        SynapseGroup ctxStr = SynapseFactory.connectNeighborhood(ctx, str, connectivity, narrow, minWeight, 1 * maxWeight);
+        SynapseGroup ctxStn = SynapseFactory.connectNeighborhood(ctx, stn, connectivity, wide, minWeight, 1 * maxWeight);
+        SynapseGroup strGpi = SynapseFactory.connectNeighborhood(str, gpi, connectivity, narrow, minWeight, 1 * maxWeight);
+        SynapseGroup stnGpi = SynapseFactory.connectNeighborhood(stn, gpi, connectivity, wide, minWeight, 1 * maxWeight);
+        SynapseGroup gpiThl = SynapseFactory.connectNeighborhood(gpi, thl, connectivity, narrow, minWeight, 1 * maxWeight);
         network.addSynapseGroups(thlCtx, ctxStr, ctxStn, strGpi, stnGpi, gpiThl);
         
         // Setup the control pathway synapse groups
-        SynapseGroup ctxSt2 = SynapseFactory.connectNeighborhood(ctx, st2, connectivity, narrow, minWeight, maxWeight);
-        SynapseGroup st2Gpe = SynapseFactory.connectNeighborhood(st2, gpe, connectivity, narrow, minWeight, maxWeight);
-        SynapseGroup stnGpe = SynapseFactory.connectNeighborhood(stn, gpe, connectivity, narrow, minWeight, 1 * maxWeight);
-        SynapseGroup gpeStn = SynapseFactory.connectNeighborhood(gpe, stn, connectivity, narrow, minWeight, 1 * maxWeight);
-        SynapseGroup gpeGpi = SynapseFactory.connectNeighborhood(gpe, gpi, connectivity, narrow, minWeight, 1 * maxWeight);
+        SynapseGroup ctxSt2 = SynapseFactory.connectNeighborhood(ctx, st2, connectivity, narrow, minWeight, 0 * maxWeight);
+        SynapseGroup st2Gpe = SynapseFactory.connectNeighborhood(st2, gpe, connectivity, narrow, minWeight, 0 * maxWeight);
+        SynapseGroup stnGpe = SynapseFactory.connectNeighborhood(stn, gpe, connectivity, wide, minWeight, 0 * maxWeight);
+        SynapseGroup gpeStn = SynapseFactory.connectNeighborhood(gpe, stn, connectivity, narrow, minWeight, 0 * maxWeight);
+        SynapseGroup gpeGpi = SynapseFactory.connectNeighborhood(gpe, gpi, connectivity, narrow, minWeight, 0 * maxWeight);
         network.addSynapseGroups(st2Gpe, gpeStn, gpeGpi, stnGpe, ctxSt2);
     }
     
     /** Setup a visualization of the network activity. */
     private void createVisualization(Stage stage) {
-        VBox container = new VBox();
-        container.setPadding(new Insets(10, 10, 10, 10));
-        container.setSpacing(10);
-        Scene scene = new Scene(container, 1200, 800);
+        VBox mainContainer = new VBox();
+        mainContainer.setPadding(new Insets(10, 10, 10, 10));
+        mainContainer.setSpacing(10);
+        Scene scene = new Scene(mainContainer, 1200, 800);
         scene.getStylesheets().add("styles/plotstyles.css");
         stage.setScene(scene);
 
@@ -167,8 +163,7 @@ public class SignalSelectionNetwork extends Application {
                     for (int i = 0; i < record.rows; ++i) {
                         writer.write(format.format(record.get(i, 0)) + ',');
                         writer.write(format.format(record.get(i, 1)) + ',');
-                        writer.write(format.format(record.get(i, 2)) + ',');
-                        writer.write(format.format(record.get(i, 3)));
+                        writer.write(format.format(record.get(i, 2)));
                         writer.newLine();
                     }
                     writer.flush();
@@ -179,57 +174,33 @@ public class SignalSelectionNetwork extends Application {
             }
         });
         
-        Label intensityLabel = new Label("Intensity");
-        Slider intensitySlider = new Slider();
-        intensitySlider.setValue(thlInput.getIntensity());
-        intensitySlider.setMin(0);
-        intensitySlider.setMax(5e-3);
-        intensitySlider.valueProperty().addListener((observable, oldValue, newValue) -> {
-            thlInput.setIntensity(newValue.doubleValue());
-        });
+        StimulusGeneratorTool stimulusTool = new StimulusGeneratorTool(thlInput);
+        SynapseScalingTool synapseTool = new SynapseScalingTool(network);
         
-        Label widthLabel = new Label("Width");
-        Slider widthSlider = new Slider();
-        widthSlider.setValue(thlInput.getWidth());
-        widthSlider.setMin(0.01);
-        widthSlider.setMax(0.25);
-        widthSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
-            thlInput.setWidth(newValue.doubleValue());
-        });
+        toolbar.getChildren().addAll(runButton, pauseButton, saveButton);
+        mainContainer.getChildren().add(toolbar);
+        HBox hbox = new HBox();
+        mainContainer.getChildren().add(hbox);
+        ScrollPane toolboxScrollPane = new ScrollPane();
+        toolboxScrollPane.setHbarPolicy(ScrollBarPolicy.NEVER);
+        VBox toolbox = new VBox();
+        ResizingSeparator toolSeparator = new ResizingSeparator(toolboxScrollPane, Orientation.VERTICAL);
+        toolbox.getChildren().addAll(stimulusTool, synapseTool);
+        hbox.getChildren().addAll(toolboxScrollPane, toolSeparator);
+        toolboxScrollPane.setContent(toolbox);
+        toolboxScrollPane.setFitToWidth(true);
         
-        Label durationLabel = new Label("Duration");
-        Slider durationSlider = new Slider();
-        durationSlider.setValue(thlInput.getDuration() / 1000.0);
-        durationSlider.setMin(0.25);
-        durationSlider.setMax(1.0);
-        durationSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
-            thlInput.setDuration((int)(1000 * newValue.doubleValue()));
-        });
-        
-        Label intervalLabel = new Label("Interval");
-        Slider intervalSlider = new Slider();
-        intervalSlider.setValue(thlInput.getInterval() / 1000.0);
-        intervalSlider.setMin(0.0);
-        intervalSlider.setMax(1.0);
-        intervalSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
-            thlInput.setInterval((int)(1000 * newValue.doubleValue()));
-        });
-        
-        toolbar.getChildren().addAll(runButton, pauseButton, saveButton, intensityLabel, intensitySlider,
-                widthLabel, widthSlider, durationLabel, durationSlider, intervalLabel, intervalSlider);
-        container.getChildren().add(toolbar);
-        
-        TimeSeriesPlot.init(container);
+        VBox plotContainer = new VBox();
+        mainContainer.setPadding(new Insets(10, 10, 10, 10));
+        mainContainer.setSpacing(10);
+        hbox.getChildren().add(plotContainer);
+        HBox.setHgrow(plotContainer, Priority.ALWAYS);
+        TimeSeriesPlot.init(plotContainer);
         raster = new SpikeRasterPlot(network);
-        lfpPlot = TimeSeriesPlot.line();
-        lfpPlot.addSeries("LFP");
-        lfpPlot.addSeries("Theta");
-        lfpPlot.setAutoRanging(false, true);
-        DoubleMatrix dx = stn.getXPosition().sub(0.5);
-        dx.muli(dx);
-        DoubleMatrix dy = stn.getYPosition().sub(0.5);
-        dy.muli(dy);
-        distanceToElectrode = MatrixFunctions.sqrt(dx.add(dy));
+        ResizingSeparator plotSeparator = new ResizingSeparator(raster.getChart(), Orientation.HORIZONTAL);
+        plotContainer.getChildren().add(plotSeparator);
+        lfpPlot = new LocalFieldPotentialPlot(stn);
+        VBox.setVgrow(lfpPlot.getChart(), Priority.ALWAYS);
         
         stage.show();
     }
@@ -241,12 +212,7 @@ public class SignalSelectionNetwork extends Application {
         Task<Void> task = new Task<Void>() {
             @Override
             protected Void call() throws Exception {
-                int windowLength = 67;
-                double[] filterWeights = BandPassFilter.sincFilter2(windowLength, 4, 8, 1000, BandPassFilter.filterType.BAND_PASS);
-                filterWeights = BandPassFilter.createWindow(filterWeights, null, windowLength, BandPassFilter.windowType.HAMMING);
-                DoubleMatrix lfpFilter = new DoubleMatrix(filterWeights);
-                DoubleMatrix lfpData = new DoubleMatrix(windowLength);
-                record = new DoubleMatrix(tSteps, 4);
+                record = new DoubleMatrix(tSteps, 3);
                 for (int step = 0; step < tSteps; step += 1) {
                     while (pauseSimulation) {
                         Thread.sleep(50);
@@ -260,34 +226,20 @@ public class SignalSelectionNetwork extends Application {
                     }
                     
                     raster.bufferSpikes(t);
+                    lfpPlot.bufferLfp(t);
                     
-                    // Calculate the local field potential for an electrode in the subthalamic nucleus
-                    double lfp = 0;
-                    for (int i = 0; i < stn.getSize(); ++i) {
-                        DoubleMatrix c = stn.getExcitatoryConductance().add(stn.getInhibitoryConductance());
-                        lfp = c.divi(distanceToElectrode).sum();
-                    }
-                    lfpPlot.bufferPoint("LFP", t, lfp);
                     record.put(step, 0, t);
-                    record.put(step, 1, thlInput.getState());
-                    record.put(step, 2, lfp);
+                    record.put(step, 1, 0);
+                    record.put(step, 2, lfpPlot.getLfp());
                     
-                    lfpData.put(new IntervalRange(0, windowLength - 1), new PointRange(0),
-                            lfpData.get(new IntervalRange(1, windowLength), new PointRange(0)));
-                    lfpData.put(windowLength - 1, lfp);
-                    double theta = lfpData.dot(lfpFilter);
-                    record.put(step, 3, theta);
-                    
-                    lfpPlot.bufferPoint("Theta", t, theta);
-                    
-                    if (step % 10 == 0 || step == tSteps - 1) {
+                    if (step % 2 == 0 || step == tSteps - 1) {
                         waitForSync = true;
                         Platform.runLater(() -> {
                             raster.updatePlot(t);
-                            lfpPlot.addPoints();
-                            lfpPlot.setXLimits(t - 0.25, t);
+                            lfpPlot.updatePlot(t);
                             waitForSync = false;
                         });
+                        Thread.sleep(16);
                         while (waitForSync) {
                             Thread.sleep(10);
                         }

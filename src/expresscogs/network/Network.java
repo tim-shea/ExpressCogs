@@ -36,6 +36,10 @@ public class Network {
         }
     }
     
+    public List<SynapseGroup> getSynapseGroups() {
+        return synapseGroups;
+    }
+    
     public void update(int step) {
         for (NeuronGroup neurons : neuronGroups) {
             neurons.update(step);

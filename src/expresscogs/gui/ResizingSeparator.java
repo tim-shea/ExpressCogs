@@ -1,71 +1,45 @@
 package expresscogs.gui;
 
+import javafx.geometry.Orientation;
 import javafx.scene.Cursor;
+import javafx.scene.control.Separator;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Region;
 
-/**
- * {@link DragResizer} can be used to add mouse listeners to a {@link Region}
- * and make it resizable by the user by clicking and dragging the border in the
- * same way as a window.
- * <p>
- * Only height resizing is currently implemented. Usage: <pre>DragResizer.makeResizable(myAnchorPane);</pre>
- *
- * @author atill
- *
- */
-public class ResizingSeparator {
-    private static final int RESIZE_MARGIN = 5;
-    private final Region region;
-    private double y;
-    private boolean initMinHeight;
+public class ResizingSeparator extends Separator {
+    private Region region;
     private boolean dragging;
 
-    private ResizingSeparator(Region region) {
+    public ResizingSeparator(Region region, Orientation orientation) {
         this.region = region;
-    }
-
-    public static void makeResizable(Region region) {
-        ResizingSeparator resizer = new ResizingSeparator(region);
-        region.setOnMousePressed(event -> resizer.mousePressed(event));
-        region.setOnMouseDragged(event -> resizer.mouseDragged(event));
-        region.setOnMouseMoved(event -> resizer.mouseOver(event));
-        region.setOnMouseReleased(event -> resizer.mouseReleased(event));
+        setOrientation(orientation);
+        if (orientation == Orientation.VERTICAL) {
+            setCursor(Cursor.E_RESIZE);
+        } else {
+            setCursor(Cursor.N_RESIZE);
+        }
+        setMinWidth(10);
+        setMinHeight(10);
+        setOnMousePressed(this::mousePressed);
+        setOnMouseDragged(this::mouseDragged);
+        setOnMouseReleased(this::mouseReleased);
     }
 
     protected void mouseReleased(MouseEvent event) {
         dragging = false;
-        region.setCursor(Cursor.DEFAULT);
-    }
-
-    protected void mouseOver(MouseEvent event) {
-        if(isInDraggableZone(event) || dragging) {
-            region.setCursor(Cursor.S_RESIZE);
-        }
-        else {
-            region.setCursor(Cursor.DEFAULT);
-        }
-    }
-
-    protected boolean isInDraggableZone(MouseEvent event) {
-        return event.getY() > (region.getHeight() - RESIZE_MARGIN);
     }
 
     protected void mouseDragged(MouseEvent event) {
         if (dragging) {
-            region.setMinHeight(region.getMinHeight() + (event.getY() - y));
-            y = event.getY();
+            if (getOrientation() == Orientation.VERTICAL) {
+                region.setPrefWidth(event.getSceneX());
+            } else {
+                region.setPrefHeight(event.getSceneY());
+            }
         }
     }
 
     protected void mousePressed(MouseEvent event) {
-        if (isInDraggableZone(event)) {
-            dragging = true;
-            if (!initMinHeight) {
-                region.setMinHeight(region.getHeight());
-                initMinHeight = true;
-            }
-            y = event.getY();
-        }
+        dragging = true;
     }
 }

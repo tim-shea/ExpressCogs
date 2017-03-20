@@ -38,7 +38,7 @@ public class HeatMap {
         pane.heightProperty().addListener((observable, oldValue, newValue) -> rescale());
         imageView.fitWidthProperty().bind(pane.widthProperty());
         imageView.fitHeightProperty().bind(pane.heightProperty().subtract(2));
-        ResizeListener.makeResizable(pane, ResizeListener.Mode.BOTH);
+        ResizeListener.makeResizable(pane, ResizeListener.Mode.VERTICAL);
         rescale();
     }
 

@@ -42,10 +42,13 @@ public class TimeSeriesPlot {
         data = new HashMap<String, BufferedDataSeries>();
     }
     
+    public XYChart<Number, Number> getChart() {
+        return chart;
+    }
+    
     private void createScatter() {
         chart = new ScatterChart<Number, Number>(xAxis, yAxis);
         chart.setAnimated(false);
-        ResizeListener.makeResizable(chart, ResizeListener.Mode.VERTICAL);
         container.getChildren().add(chart);
     }
     

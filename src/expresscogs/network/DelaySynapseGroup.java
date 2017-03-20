@@ -17,8 +17,10 @@ public class DelaySynapseGroup implements SynapseGroup {
     private DoubleMatrix weights;
     private DoubleMatrix delays;
     private DoubleMatrix conductances;
+    private double weightScale = 1.0;
     
     public DelaySynapseGroup(String name, NeuronGroup source, NeuronGroup target, DoubleMatrix index, int maxDelay) {
+        this.name = name;
         this.source = source;
         source.addAxonalSynapseGroup(this);
         this.target = target;
@@ -41,7 +43,7 @@ public class DelaySynapseGroup implements SynapseGroup {
         int[] spikes = source.getSpikes().findIndices();
         for (int n : spikes) {
             int[] synapses = preIndex.eq(n).findIndices();
-            DoubleMatrix w = weights.get(synapses);
+            DoubleMatrix w = weights.get(synapses).mul(weightScale);
             DoubleMatrix t = postIndex.get(synapses);
             DoubleMatrix d = delays.get(synapses).add(step);
             d.divi(delays.columns);
@@ -84,5 +86,15 @@ public class DelaySynapseGroup implements SynapseGroup {
     @Override
     public DoubleMatrix getConductances(int step) {
         return conductances.getColumn(step % delays.columns);
+    }
+    
+    @Override
+    public double getWeightScale() {
+        return weightScale;
+    }
+    
+    @Override
+    public void setWeightScale(double value) {
+        weightScale = value;
     }
 }

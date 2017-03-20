@@ -20,9 +20,9 @@ public class StimulusGenerator implements InputGenerator {
     private int numberStimuli = 2;
     private double noise = 0.5e-3;
     private int duration = 500;
-    private int interval = 1000;
-    private double intensity = 0.5e-3;
-    private double width = 0.05;
+    private int interval = 500;
+    private double intensity = 1e-3;
+    private double width = 0.1;
     private int state = 0;
     private int step = 0;
     
@@ -94,10 +94,10 @@ public class StimulusGenerator implements InputGenerator {
         if (step % (duration + interval) == 0) {
             stimuli = DoubleMatrix.zeros(neurons.getSize());
             for (int i = 0; i < numberStimuli; ++i) {
-                double x = Math.random();
+                double x = width + (1 - 2 * width) * Math.random();
                 DoubleMatrix stimulus = MatrixFunctions.absi(neurons.getXPosition().sub(x)).subi(width).negi();
                 stimulus.put(stimulus.lt(0), 0);
-                stimulus.muli(intensity / width);
+                stimulus.muli((i + 1) * intensity / width);
                 stimuli.addi(stimulus);
             }
             state = 1;

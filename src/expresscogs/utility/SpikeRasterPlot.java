@@ -7,12 +7,13 @@ import org.jblas.DoubleMatrix;
 
 import expresscogs.network.Network;
 import expresscogs.network.NeuronGroup;
+import javafx.scene.chart.XYChart;
 
 public class SpikeRasterPlot {
     private TimeSeriesPlot plot = TimeSeriesPlot.scatter();
     private Network network;
     private List<BufferedDataSeries> data = new LinkedList<BufferedDataSeries>();
-    private double windowSize = 0.25;
+    private double windowSize = 0.5;
     
     public SpikeRasterPlot(Network network) {
         this.network = network;
@@ -20,8 +21,11 @@ public class SpikeRasterPlot {
             BufferedDataSeries series = plot.addSeries(group.getName());
             series.setMaxLength(0);
             data.add(series);
-            //subsample = DoubleMatrix.rand(group.getSize()).lti(0.2);
         }
+    }
+    
+    public XYChart<Number, Number> getChart() {
+        return plot.getChart();
     }
     
     public void bufferSpikes(double t) {
