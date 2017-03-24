@@ -64,14 +64,14 @@ public class SignalSelectionNetwork extends Application {
     private int tSteps = 100000;
     // Duration of simulation step in seconds
     private double dt = 0.001;
-    private double lowBackgroundInput = 0.2e-3;
-    private double highBackgroundInput = 0.4e-3;
+    private double lowBackgroundInput = 0.0e-3;
+    private double highBackgroundInput = 0.2e-3;
     private int groupSize = 500;
     private double connectivity = 0.1;
     private double narrow = 0.05;
     private double wide = 0.5;
     private double minWeight = 0;
-    private double maxWeight = 1e-4;
+    private double maxWeight = 2e-4;
     private ContinuousStimulusGenerator thlInput;
 
     // Neuron groups
@@ -108,16 +108,16 @@ public class SignalSelectionNetwork extends Application {
         st2 = NeuronFactory.createLifInhibitory("ST2", groupSize, lowBackgroundInput);
         stn = NeuronFactory.createLifExcitatory("STN", groupSize, lowBackgroundInput);
         gpi = NeuronFactory.createLifInhibitory("GPI", groupSize, lowBackgroundInput);
-        gpe = NeuronFactory.createLifInhibitory("GPE", groupSize / 4, highBackgroundInput);
+        gpe = NeuronFactory.createLifInhibitory("GPE", groupSize, highBackgroundInput);
         network.addNeuronGroups(thl, ctx, str, st2, stn, gpi, gpe);
         
         // Setup the selection pathway synapse groups
         SynapseGroup thlCtx = SynapseFactory.connectNeighborhood(thl, ctx, connectivity, narrow, minWeight, maxWeight);
         SynapseGroup ctxStr = SynapseFactory.connectNeighborhood(ctx, str, connectivity, narrow, minWeight, 1 * maxWeight);
-        SynapseGroup ctxStn = SynapseFactory.connectNeighborhood(ctx, stn, connectivity, wide, minWeight, 1 * maxWeight);
-        SynapseGroup strGpi = SynapseFactory.connectNeighborhood(str, gpi, connectivity, narrow, minWeight, 1 * maxWeight);
-        SynapseGroup stnGpi = SynapseFactory.connectNeighborhood(stn, gpi, connectivity, wide, minWeight, 1 * maxWeight);
-        SynapseGroup gpiThl = SynapseFactory.connectNeighborhood(gpi, thl, connectivity, narrow, minWeight, 1 * maxWeight);
+        SynapseGroup ctxStn = SynapseFactory.connectNeighborhood(ctx, stn, connectivity, wide, minWeight, 2 * maxWeight);
+        SynapseGroup strGpi = SynapseFactory.connectNeighborhood(str, gpi, connectivity, narrow, minWeight, 1.5 * maxWeight);
+        SynapseGroup stnGpi = SynapseFactory.connectNeighborhood(stn, gpi, connectivity, wide, minWeight, 2 * maxWeight);
+        SynapseGroup gpiThl = SynapseFactory.connectNeighborhood(gpi, thl, connectivity, narrow, minWeight, 0.5 * maxWeight);
         network.addSynapseGroups(thlCtx, ctxStr, ctxStn, strGpi, stnGpi, gpiThl);
         
         // Setup the control pathway synapse groups
@@ -232,16 +232,16 @@ public class SignalSelectionNetwork extends Application {
                     record.put(step, 1, 0);
                     record.put(step, 2, lfpPlot.getLfp());
                     
-                    if (step % 2 == 0 || step == tSteps - 1) {
+                    if (step % 100 == 0 || step == tSteps - 1) {
                         waitForSync = true;
                         Platform.runLater(() -> {
                             raster.updatePlot(t);
                             lfpPlot.updatePlot(t);
                             waitForSync = false;
                         });
-                        Thread.sleep(16);
+                        Thread.sleep(0);
                         while (waitForSync) {
-                            Thread.sleep(10);
+                            Thread.sleep(1);
                         }
                     }
                 }

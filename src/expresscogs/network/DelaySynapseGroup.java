@@ -42,10 +42,11 @@ public class DelaySynapseGroup implements SynapseGroup {
         conductances.putColumn(step % delays.columns, conductances.getColumn(step % delays.columns).fill(0));
         int[] spikes = source.getSpikes().findIndices();
         for (int n : spikes) {
-            int[] synapses = preIndex.eq(n).findIndices();
-            DoubleMatrix w = weights.get(synapses).mul(weightScale);
-            DoubleMatrix t = postIndex.get(synapses);
-            DoubleMatrix d = delays.get(synapses).add(step);
+            //int[] synapses = preIndex.eq(n).findIndices();
+            DoubleMatrix s = preIndex.eq(n);
+            DoubleMatrix w = weights.get(s).mul(weightScale);
+            DoubleMatrix t = postIndex.get(s);
+            DoubleMatrix d = delays.get(s).add(step);
             d.divi(delays.columns);
             d = d.sub(MatrixFunctions.floor(d)).mul(delays.columns);
             int[] indices = t.add(d.mul(conductances.rows)).toIntArray();

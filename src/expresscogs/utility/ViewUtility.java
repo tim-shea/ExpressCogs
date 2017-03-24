@@ -6,7 +6,7 @@ import javafx.scene.control.Slider;
 import javafx.scene.layout.Pane;
 
 public final class ViewUtility {
-    public static void createSlider(Pane container, String name, double initialValue, double minValue, double maxValue, ChangeListener<? super Number> valueListener) {
+    public static Slider createSlider(Pane container, String name, double initialValue, double minValue, double maxValue, ChangeListener<? super Number> valueListener) {
         Label label = new Label(name);
         Slider slider = new Slider();
         slider.setValue(initialValue);
@@ -18,5 +18,6 @@ public final class ViewUtility {
         slider.setBlockIncrement((maxValue - minValue) / 8);
         slider.valueProperty().addListener(valueListener);
         container.getChildren().addAll(label, slider);
+        return slider;
     }
 }

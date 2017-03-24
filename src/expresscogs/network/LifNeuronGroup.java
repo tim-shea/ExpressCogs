@@ -80,8 +80,8 @@ public class LifNeuronGroup implements NeuronGroup {
             }
         }
         // Apply a ceiling to the input currents?
-        gE.put(gE.gt(4e-3), 4e-3);
-        gI.put(gI.gt(4e-3), 4e-3);
+        //gE.put(gE.gt(4e-3), 4e-3);
+        //gI.put(gI.gt(4e-3), 4e-3);
         i.addi(gE).subi(gI);
         // dv = -vDecay * (v - eL) + i
         v.subi(vRest, dv).muli(-vDecay).addi(i);

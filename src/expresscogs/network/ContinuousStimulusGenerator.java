@@ -18,7 +18,7 @@ public class ContinuousStimulusGenerator implements InputGenerator {
     private DoubleMatrix stimulus;
     private double position = 0.5;
     private double noise = 0.5e-3;
-    private double intensity = 1e-3;
+    private double intensity = 3e-3;
     private double width = 0.1;
     
     /** Return the scale of random noise added to the stimulus each update. */
@@ -79,6 +79,7 @@ public class ContinuousStimulusGenerator implements InputGenerator {
         stimulus = MatrixFunctions.absi(neurons.getXPosition().sub(position)).subi(width).negi();
         stimulus.put(stimulus.lt(0), 0);
         stimulus.muli(intensity / width);
-        return stimulus.add(DoubleMatrix.rand(neurons.getSize()).muli(noise));
+        stimulus.addi(noise);
+        return DoubleMatrix.rand(neurons.getSize()).muli(stimulus);
     }
 }

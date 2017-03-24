@@ -13,7 +13,7 @@ public class LocalFieldPotentialPlot {
     private TimeSeriesPlot plot = TimeSeriesPlot.line();
     private NeuronGroup neurons;
     private List<BufferedDataSeries> data = new LinkedList<BufferedDataSeries>();
-    private double windowSize = 0.5;
+    private double windowSize = 1;
     private double lfp;
     private DoubleMatrix distanceToElectrode;
     
@@ -45,7 +45,7 @@ public class LocalFieldPotentialPlot {
     }
     
     public void bufferLfp(double t) {
-        DoubleMatrix c = neurons.getExcitatoryConductance().add(neurons.getInhibitoryConductance());
+        DoubleMatrix c = neurons.getExcitatoryConductance().sub(neurons.getInhibitoryConductance());
         lfp = c.divi(distanceToElectrode).sum();
         plot.bufferPoint("LFP", t, lfp);
         
