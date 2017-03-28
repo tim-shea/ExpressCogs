@@ -4,6 +4,10 @@ import expresscogs.gui.ResizingSeparator;
 import expresscogs.gui.StimulusGeneratorTool;
 import expresscogs.gui.SynapseScalingTool;
 import expresscogs.network.*;
+import expresscogs.network.synapses.NeighborhoodTopology;
+import expresscogs.network.synapses.SynapseFactory;
+import expresscogs.network.synapses.SynapseGroup;
+import expresscogs.network.synapses.SynapseGroupTopology;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.scene.Scene;
@@ -66,12 +70,10 @@ public class SignalSelectionNetwork extends Application {
     private double dt = 0.001;
     private double lowBackgroundInput = 0.0e-3;
     private double highBackgroundInput = 0.2e-3;
-    private int groupSize = 500;
-    private double connectivity = 0.1;
-    private double narrow = 0.05;
-    private double wide = 0.5;
-    private double minWeight = 0;
-    private double maxWeight = 2e-4;
+    private int groupSize = 1000;
+    private SynapseGroupTopology narrow = new NeighborhoodTopology(0.1, 0.05);
+    private SynapseGroupTopology wide = new NeighborhoodTopology(0.1, 0.5);
+    private double weightScale = 1e-4;
     private ContinuousStimulusGenerator thlInput;
 
     // Neuron groups
@@ -107,26 +109,26 @@ public class SignalSelectionNetwork extends Application {
         str = NeuronFactory.createLifInhibitory("STR", groupSize, lowBackgroundInput);
         st2 = NeuronFactory.createLifInhibitory("ST2", groupSize, lowBackgroundInput);
         stn = NeuronFactory.createLifExcitatory("STN", groupSize, lowBackgroundInput);
-        gpi = NeuronFactory.createLifInhibitory("GPI", groupSize, lowBackgroundInput);
+        gpi = NeuronFactory.createLifInhibitory("GPI", groupSize / 4, lowBackgroundInput);
         gpe = NeuronFactory.createLifInhibitory("GPE", groupSize, highBackgroundInput);
         network.addNeuronGroups(thl, ctx, str, st2, stn, gpi, gpe);
         
         // Setup the selection pathway synapse groups
-        SynapseGroup thlCtx = SynapseFactory.connectNeighborhood(thl, ctx, connectivity, narrow, minWeight, maxWeight);
-        SynapseGroup ctxStr = SynapseFactory.connectNeighborhood(ctx, str, connectivity, narrow, minWeight, 1 * maxWeight);
-        SynapseGroup ctxStn = SynapseFactory.connectNeighborhood(ctx, stn, connectivity, wide, minWeight, 2 * maxWeight);
-        SynapseGroup strGpi = SynapseFactory.connectNeighborhood(str, gpi, connectivity, narrow, minWeight, 1.5 * maxWeight);
-        SynapseGroup stnGpi = SynapseFactory.connectNeighborhood(stn, gpi, connectivity, wide, minWeight, 2 * maxWeight);
-        SynapseGroup gpiThl = SynapseFactory.connectNeighborhood(gpi, thl, connectivity, narrow, minWeight, 0.5 * maxWeight);
+        SynapseGroup thlCtx = SynapseFactory.connect(thl, ctx, narrow, weightScale);
+        SynapseGroup ctxStr = SynapseFactory.connect(ctx, str, narrow, 1 * weightScale);
+        SynapseGroup ctxStn = SynapseFactory.connect(ctx, stn, wide, 1 * weightScale);
+        SynapseGroup strGpi = SynapseFactory.connect(str, gpi, narrow, 0.5 * weightScale);
+        SynapseGroup stnGpi = SynapseFactory.connect(stn, gpi, wide, 1 * weightScale);
+        SynapseGroup gpiThl = SynapseFactory.connect(gpi, thl, narrow, 0.5 * weightScale);
         network.addSynapseGroups(thlCtx, ctxStr, ctxStn, strGpi, stnGpi, gpiThl);
         
         // Setup the control pathway synapse groups
-        SynapseGroup ctxSt2 = SynapseFactory.connectNeighborhood(ctx, st2, connectivity, narrow, minWeight, 0 * maxWeight);
-        SynapseGroup st2Gpe = SynapseFactory.connectNeighborhood(st2, gpe, connectivity, narrow, minWeight, 0 * maxWeight);
-        SynapseGroup stnGpe = SynapseFactory.connectNeighborhood(stn, gpe, connectivity, wide, minWeight, 0 * maxWeight);
-        SynapseGroup gpeStn = SynapseFactory.connectNeighborhood(gpe, stn, connectivity, narrow, minWeight, 0 * maxWeight);
-        SynapseGroup gpeGpi = SynapseFactory.connectNeighborhood(gpe, gpi, connectivity, narrow, minWeight, 0 * maxWeight);
-        network.addSynapseGroups(st2Gpe, gpeStn, gpeGpi, stnGpe, ctxSt2);
+        //SynapseGroup ctxSt2 = SynapseFactory.connectNeighborhood(ctx, st2, connectivity, narrow, minWeight, 0 * maxWeight);
+        //SynapseGroup st2Gpe = SynapseFactory.connectNeighborhood(st2, gpe, connectivity, narrow, minWeight, 0 * maxWeight);
+        //SynapseGroup stnGpe = SynapseFactory.connectNeighborhood(stn, gpe, connectivity, wide, minWeight, 0 * maxWeight);
+        //SynapseGroup gpeStn = SynapseFactory.connectNeighborhood(gpe, stn, connectivity, narrow, minWeight, 0 * maxWeight);
+        //SynapseGroup gpeGpi = SynapseFactory.connectNeighborhood(gpe, gpi, connectivity, narrow, minWeight, 0 * maxWeight);
+        //network.addSynapseGroups(st2Gpe, gpeStn, gpeGpi, stnGpe, ctxSt2);
     }
     
     /** Setup a visualization of the network activity. */
@@ -134,7 +136,7 @@ public class SignalSelectionNetwork extends Application {
         VBox mainContainer = new VBox();
         mainContainer.setPadding(new Insets(10, 10, 10, 10));
         mainContainer.setSpacing(10);
-        Scene scene = new Scene(mainContainer, 1200, 800);
+        Scene scene = new Scene(mainContainer, 1280, 720);
         scene.getStylesheets().add("styles/plotstyles.css");
         stage.setScene(scene);
 
@@ -175,7 +177,7 @@ public class SignalSelectionNetwork extends Application {
         });
         
         StimulusGeneratorTool stimulusTool = new StimulusGeneratorTool(thlInput);
-        SynapseScalingTool synapseTool = new SynapseScalingTool(network);
+        SynapseScalingTool synapseTool = new SynapseScalingTool(network, 0, weightScale * 2);
         
         toolbar.getChildren().addAll(runButton, pauseButton, saveButton);
         mainContainer.getChildren().add(toolbar);
@@ -196,10 +198,10 @@ public class SignalSelectionNetwork extends Application {
         hbox.getChildren().add(plotContainer);
         HBox.setHgrow(plotContainer, Priority.ALWAYS);
         TimeSeriesPlot.init(plotContainer);
-        raster = new SpikeRasterPlot(network);
+        raster = new SpikeRasterPlot(network, 100);
         ResizingSeparator plotSeparator = new ResizingSeparator(raster.getChart(), Orientation.HORIZONTAL);
         plotContainer.getChildren().add(plotSeparator);
-        lfpPlot = new LocalFieldPotentialPlot(stn);
+        lfpPlot = new LocalFieldPotentialPlot(thl);
         VBox.setVgrow(lfpPlot.getChart(), Priority.ALWAYS);
         
         stage.show();
@@ -232,7 +234,7 @@ public class SignalSelectionNetwork extends Application {
                     record.put(step, 1, 0);
                     record.put(step, 2, lfpPlot.getLfp());
                     
-                    if (step % 100 == 0 || step == tSteps - 1) {
+                    if (step % 50 == 0 || step == tSteps - 1) {
                         waitForSync = true;
                         Platform.runLater(() -> {
                             raster.updatePlot(t);
@@ -241,7 +243,7 @@ public class SignalSelectionNetwork extends Application {
                         });
                         Thread.sleep(0);
                         while (waitForSync) {
-                            Thread.sleep(1);
+                            Thread.sleep(5);
                         }
                     }
                 }
@@ -250,6 +252,12 @@ public class SignalSelectionNetwork extends Application {
         };
         Thread thread = new Thread(task);
         stage.setOnCloseRequest(event -> {
+            pauseSimulation = true;
+            try {
+                network.shutdown();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
             thread.interrupt();
         });
         thread.start();

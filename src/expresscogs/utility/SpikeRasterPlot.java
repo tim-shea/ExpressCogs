@@ -14,16 +14,17 @@ public class SpikeRasterPlot {
     private Network network;
     private List<BufferedDataSeries> data = new LinkedList<BufferedDataSeries>();
     private double windowSize = 1;
-    private DoubleMatrix subsample;
+    private List<DoubleMatrix> sampleIndices = new LinkedList<DoubleMatrix>();
     
-    public SpikeRasterPlot(Network network) {
+    public SpikeRasterPlot(Network network, int sampleSize) {
         this.network = network;
         for (NeuronGroup group : network.getNeuronGroups()) {
             BufferedDataSeries series = plot.addSeries(group.getName());
             series.setMaxLength(0);
             data.add(series);
+            double p = (double)sampleSize / group.getSize();
+            sampleIndices.add(DoubleMatrix.rand(group.getSize()).lti(p));
         }
-        subsample = DoubleMatrix.rand(500).lti(0.2);
     }
     
     public XYChart<Number, Number> getChart() {
@@ -32,8 +33,9 @@ public class SpikeRasterPlot {
     
     public void bufferSpikes(double t) {
         double offset = 0;
+        int i = 0;
         for (NeuronGroup group : network.getNeuronGroups()) {
-            DoubleMatrix sampledSpikes = group.getSpikes().and(subsample);
+            DoubleMatrix sampledSpikes = group.getSpikes().and(sampleIndices.get(i++));
             double[] points = group.getXPosition().get(sampledSpikes).add(offset).data;
             plot.bufferPoints(group.getName(), t, points);
             offset += 1;

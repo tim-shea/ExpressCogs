@@ -6,6 +6,8 @@ import java.util.List;
 import org.jblas.DoubleMatrix;
 import org.jblas.MatrixFunctions;
 
+import expresscogs.network.synapses.SynapseGroup;
+
 public class AdExNeuronGroup implements NeuronGroup {
     private List<SynapseGroup> dendriticSynapseGroups = new ArrayList<SynapseGroup>();
     private List<SynapseGroup> axonalSynapseGroups = new ArrayList<SynapseGroup>();

@@ -1,7 +1,9 @@
-package expresscogs.network;
+package expresscogs.network.synapses;
 
 import org.jblas.DoubleMatrix;
 import org.jblas.MatrixFunctions;
+
+import expresscogs.network.NeuronGroup;
 
 /**
  * StdpSynapseGroup adds spike-timing dependent plasticity to the standard DelaySynapseGroup.

@@ -65,7 +65,11 @@ public class ContinuousStimulusGenerator implements InputGenerator {
     
     /** Return the signal-to-noise ratio of the generated input values. */
     public double getSignalToNoiseRatio() {
-        return intensity / noise;
+        if (noise == 0) {
+            return 0;
+        } else {
+            return intensity / noise;
+        }
     }
     
     /** Assign the signal-to-noise ratio of the generated input values by adjusting the stimulus

@@ -1,6 +1,8 @@
 package expresscogs.simulation;
 
 import expresscogs.network.*;
+import expresscogs.network.synapses.SynapseFactory;
+import expresscogs.network.synapses.SynapseGroup;
 import expresscogs.utility.TimeSeriesPlot;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -49,9 +51,9 @@ public class SimpleNetwork extends Application {
         double connectivity = 1.0;
         double minWeight = 0.5e-9;
         double maxWeight = 1e-9;
-        SynapseGroup synapses = SynapseFactory.connectUniformRandom(neurons, neurons,
-                connectivity, minWeight, maxWeight);
-        network.addSynapseGroups(synapses);
+        //SynapseGroup synapses = SynapseFactory.connectUniformRandom(neurons, neurons,
+        //        connectivity, minWeight, maxWeight);
+        //network.addSynapseGroups(synapses);
     }
     
     /** Setup a visualization of the network activity. */

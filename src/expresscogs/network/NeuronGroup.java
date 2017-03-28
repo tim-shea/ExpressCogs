@@ -2,6 +2,8 @@ package expresscogs.network;
 
 import org.jblas.DoubleMatrix;
 
+import expresscogs.network.synapses.SynapseGroup;
+
 public interface NeuronGroup {
 
     String getName();

@@ -1,6 +1,8 @@
-package expresscogs.network;
+package expresscogs.network.synapses;
 
 import org.jblas.DoubleMatrix;
+
+import expresscogs.network.NeuronGroup;
 
 /**
  * SynapseGroup is an interface representing a synaptic pathway between two neuron groups. A synapse group is updated
@@ -21,12 +23,6 @@ public interface SynapseGroup {
 
     /** Get the target of the synaptic pathway. */
     NeuronGroup getTarget();
-
-    /** Get a vector with the source neuron indices for each synapse. */
-    DoubleMatrix getPreIndex();
-
-    /** Get a vector with the target neuron indices for each synapse. */
-    DoubleMatrix getPostIndex();
 
     /** Get a vector of synaptic weights. */
     DoubleMatrix getWeights();
