@@ -65,13 +65,21 @@ public class TimeSeriesPlot {
         return buffer;
     }
     
-    public void bufferPoint(String seriesLabel, double t, double x) {
-        data.get(seriesLabel).bufferData(t, x);
+    public void bufferPoint(String seriesLabel, double x, double y) {
+        data.get(seriesLabel).bufferData(x, y);
     }
     
-    public void bufferPoints(String seriesLabel, double t, double[] points) {
-        for (double x : points) {
-            data.get(seriesLabel).bufferData(t, x);
+    public void bufferPoints(String seriesLabel, double x, double[] ys) {
+        BufferedDataSeries series = data.get(seriesLabel); 
+        for (double y : ys) {
+            series.bufferData(x, y);
+        }
+    }
+    
+    public void bufferPoints(String seriesLabel, double[] xs, double[] ys) {
+        BufferedDataSeries series = data.get(seriesLabel);
+        for (int i = 0; i < xs.length; ++i) {
+            series.bufferData(xs[i], ys[i]);
         }
     }
     

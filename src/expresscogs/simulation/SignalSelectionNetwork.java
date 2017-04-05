@@ -12,6 +12,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.ScrollPane.ScrollBarPolicy;
 import javafx.scene.layout.FlowPane;
@@ -28,6 +29,7 @@ import java.text.NumberFormat;
 
 import org.jblas.DoubleMatrix;
 import expresscogs.utility.LocalFieldPotentialPlot;
+import expresscogs.utility.NeuralFieldPlot;
 import expresscogs.utility.SpikeRasterPlot;
 import expresscogs.utility.TimeSeriesPlot;
 import javafx.application.Application;
@@ -76,6 +78,7 @@ public class SignalSelectionNetwork extends Application {
     
     // Charts for visualization
     private SpikeRasterPlot raster;
+    private NeuralFieldPlot fieldPlot;
     private LocalFieldPotentialPlot lfpPlot;
     private DoubleMatrix record;
     
@@ -191,9 +194,22 @@ public class SignalSelectionNetwork extends Application {
         hbox.getChildren().add(plotContainer);
         HBox.setHgrow(plotContainer, Priority.ALWAYS);
         TimeSeriesPlot.init(plotContainer);
-        raster = new SpikeRasterPlot(network, 100);
-        ResizingSeparator plotSeparator = new ResizingSeparator(raster.getChart(), Orientation.HORIZONTAL);
+        
+        //raster = new SpikeRasterPlot(network, 100);
+        //ResizingSeparator plotSeparator = new ResizingSeparator(raster.getChart(), Orientation.HORIZONTAL);
+        //plotContainer.getChildren().add(plotSeparator);
+        
+        ComboBox<String> neuronGroupCombo = new ComboBox<String>();
+        neuronGroupCombo.getItems().addAll("THL", "CTX", "STR", "ST2", "STN", "GPI", "GPE");
+        neuronGroupCombo.valueProperty().addListener((listener, oldValue, newValue) -> {
+            fieldPlot.setNeuronGroup(network.getNeuronGroup(newValue));
+        });
+        plotContainer.getChildren().add(neuronGroupCombo);
+        fieldPlot = new NeuralFieldPlot();
+        neuronGroupCombo.setValue("THL");
+        ResizingSeparator plotSeparator = new ResizingSeparator(fieldPlot.getChart(), Orientation.HORIZONTAL);
         plotContainer.getChildren().add(plotSeparator);
+        
         lfpPlot = new LocalFieldPotentialPlot(stn);
         VBox.setVgrow(lfpPlot.getChart(), Priority.ALWAYS);
         
@@ -206,10 +222,12 @@ public class SignalSelectionNetwork extends Application {
         simulation = new Simulation() {
             @Override
             public void update() {
+                final double t = getTime();
                 network.update(getStep());
                 
-                raster.bufferSpikes(getTime());
-                lfpPlot.bufferLfp(getTime());
+                //raster.bufferSpikes(t);
+                fieldPlot.bufferNeuralField(t);
+                lfpPlot.bufferLfp(t);
                 
                 record.put(getStep(), 0, getTime());
                 record.put(getStep(), 1, thlInput.getNoise());
@@ -222,8 +240,10 @@ public class SignalSelectionNetwork extends Application {
                 if (getStep() % 20 == 0 || getStep() == tMax - 1) {
                     sync();
                     Platform.runLater(() -> {
-                        raster.updatePlot(getTime());
-                        lfpPlot.updatePlot(getTime());
+                        //raster.updatePlot(t);
+                        if (getStep() % 1000 == 0)
+                            fieldPlot.updatePlot(t);
+                        lfpPlot.updatePlot(t);
                         sync();
                     });
                 }
