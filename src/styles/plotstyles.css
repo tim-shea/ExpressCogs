@@ -3,7 +3,7 @@
 }
 .chart-symbol {
 	-fx-shape: null;
-	-fx-padding: 1.5px;
+	-fx-padding: 1px;
 	-fx-background-color: black;
 	-fx-background-radius: 0px;
 }

@@ -32,7 +32,6 @@ import expresscogs.utility.SpikeRasterPlot;
 import expresscogs.utility.TimeSeriesPlot;
 import javafx.application.Application;
 import javafx.application.Platform;
-import javafx.concurrent.Task;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
@@ -55,19 +54,9 @@ public class SignalSelectionNetwork extends Application {
         launch(args);
     }
     
-    // Network manages the synapse and neuron groups
+    private Simulation simulation;
     private Network network;
-    // Flag for synchronization
-    private boolean waitForSync;
-    // Flag for simulation state
-    private boolean pauseSimulation;
-
-    /* Simulation parameters -----------------------------------------------------------------------------------------*/
-
-    // Total number of simulation steps (duration = dt * tSteps)
-    private int tSteps = 100000;
-    // Duration of simulation step in seconds
-    private double dt = 0.001;
+    private int tMax = 100000;
     private double lowBackgroundInput = 0.0e-3;
     private double highBackgroundInput = 0.2e-3;
     private int groupSize = 1000;
@@ -75,7 +64,7 @@ public class SignalSelectionNetwork extends Application {
     private SynapseGroupTopology wide = new NeighborhoodTopology(0.1, 0.5);
     private double weightScale = 1e-4;
     private ContinuousStimulusGenerator thlInput;
-
+    
     // Neuron groups
     private NeuronGroup thl;
     private NeuronGroup ctx;
@@ -98,7 +87,7 @@ public class SignalSelectionNetwork extends Application {
         runSimulation(stage);
     }
     
-    /** Create the network structure, consisting of 5 neuron groups and 6 synaptic pathways. */
+    /** Create the network structure */
     private void createNetwork() {
         network = new Network();
         
@@ -110,25 +99,25 @@ public class SignalSelectionNetwork extends Application {
         st2 = NeuronFactory.createLifInhibitory("ST2", groupSize, lowBackgroundInput);
         stn = NeuronFactory.createLifExcitatory("STN", groupSize, lowBackgroundInput);
         gpi = NeuronFactory.createLifInhibitory("GPI", groupSize / 4, lowBackgroundInput);
-        gpe = NeuronFactory.createLifInhibitory("GPE", groupSize, highBackgroundInput);
+        gpe = NeuronFactory.createLifInhibitory("GPE", groupSize / 4, highBackgroundInput);
         network.addNeuronGroups(thl, ctx, str, st2, stn, gpi, gpe);
         
         // Setup the selection pathway synapse groups
-        SynapseGroup thlCtx = SynapseFactory.connect(thl, ctx, narrow, weightScale);
-        SynapseGroup ctxStr = SynapseFactory.connect(ctx, str, narrow, 1 * weightScale);
+        SynapseGroup thlCtx = SynapseFactory.connect(thl, ctx, narrow, 1 * weightScale);
+        SynapseGroup ctxStr = SynapseFactory.connect(ctx, str, narrow, 0.5 * weightScale);
         SynapseGroup ctxStn = SynapseFactory.connect(ctx, stn, wide, 1 * weightScale);
         SynapseGroup strGpi = SynapseFactory.connect(str, gpi, narrow, 0.5 * weightScale);
         SynapseGroup stnGpi = SynapseFactory.connect(stn, gpi, wide, 1 * weightScale);
-        SynapseGroup gpiThl = SynapseFactory.connect(gpi, thl, narrow, 0.5 * weightScale);
+        SynapseGroup gpiThl = SynapseFactory.connect(gpi, thl, narrow, 1 * weightScale);
         network.addSynapseGroups(thlCtx, ctxStr, ctxStn, strGpi, stnGpi, gpiThl);
         
         // Setup the control pathway synapse groups
-        //SynapseGroup ctxSt2 = SynapseFactory.connectNeighborhood(ctx, st2, connectivity, narrow, minWeight, 0 * maxWeight);
-        //SynapseGroup st2Gpe = SynapseFactory.connectNeighborhood(st2, gpe, connectivity, narrow, minWeight, 0 * maxWeight);
-        //SynapseGroup stnGpe = SynapseFactory.connectNeighborhood(stn, gpe, connectivity, wide, minWeight, 0 * maxWeight);
-        //SynapseGroup gpeStn = SynapseFactory.connectNeighborhood(gpe, stn, connectivity, narrow, minWeight, 0 * maxWeight);
-        //SynapseGroup gpeGpi = SynapseFactory.connectNeighborhood(gpe, gpi, connectivity, narrow, minWeight, 0 * maxWeight);
-        //network.addSynapseGroups(st2Gpe, gpeStn, gpeGpi, stnGpe, ctxSt2);
+        SynapseGroup ctxSt2 = SynapseFactory.connect(ctx, st2, narrow, 0.5 * weightScale);
+        SynapseGroup st2Gpe = SynapseFactory.connect(st2, gpe, narrow, 0.5 * weightScale);
+        SynapseGroup stnGpe = SynapseFactory.connect(stn, gpe, wide, 1 * weightScale);
+        SynapseGroup gpeStn = SynapseFactory.connect(gpe, stn, narrow, 0.5 * weightScale);
+        SynapseGroup gpeGpi = SynapseFactory.connect(gpe, gpi, narrow, 0.5 * weightScale);
+        network.addSynapseGroups(ctxSt2, st2Gpe, stnGpe, gpeStn, gpeGpi);
     }
     
     /** Setup a visualization of the network activity. */
@@ -139,15 +128,15 @@ public class SignalSelectionNetwork extends Application {
         Scene scene = new Scene(mainContainer, 1280, 720);
         scene.getStylesheets().add("styles/plotstyles.css");
         stage.setScene(scene);
-
+        
         FlowPane toolbar = new FlowPane();
         toolbar.setHgap(10);
         
         Button runButton = new Button("run");
-        runButton.setOnAction(event -> pauseSimulation = false);
+        runButton.setOnAction(event -> simulation.runAsync(tMax));
         
-        Button pauseButton = new Button("pause");
-        pauseButton.setOnAction(event -> pauseSimulation = true);
+        Button pauseButton = new Button("stop");
+        pauseButton.setOnAction(event -> simulation.stop());
         
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Save As...");
@@ -160,12 +149,16 @@ public class SignalSelectionNetwork extends Application {
                 NumberFormat format = DecimalFormat.getNumberInstance();
                 try {
                     BufferedWriter writer = new BufferedWriter(new FileWriter(file));
-                    writer.write("t,in,lfp,theta");
+                    writer.write("t,ns,in,thl,ctx,stn,lfp");
                     writer.newLine();
                     for (int i = 0; i < record.rows; ++i) {
                         writer.write(format.format(record.get(i, 0)) + ',');
                         writer.write(format.format(record.get(i, 1)) + ',');
-                        writer.write(format.format(record.get(i, 2)));
+                        writer.write(format.format(record.get(i, 2)) + ',');
+                        writer.write(format.format(record.get(i, 3)) + ',');
+                        writer.write(format.format(record.get(i, 4)) + ',');
+                        writer.write(format.format(record.get(i, 5)) + ',');
+                        writer.write(format.format(record.get(i, 6)));
                         writer.newLine();
                     }
                     writer.flush();
@@ -201,7 +194,7 @@ public class SignalSelectionNetwork extends Application {
         raster = new SpikeRasterPlot(network, 100);
         ResizingSeparator plotSeparator = new ResizingSeparator(raster.getChart(), Orientation.HORIZONTAL);
         plotContainer.getChildren().add(plotSeparator);
-        lfpPlot = new LocalFieldPotentialPlot(thl);
+        lfpPlot = new LocalFieldPotentialPlot(stn);
         VBox.setVgrow(lfpPlot.getChart(), Priority.ALWAYS);
         
         stage.show();
@@ -209,57 +202,36 @@ public class SignalSelectionNetwork extends Application {
     
     /** Run the simulation on a new thread. */
     private void runSimulation(Stage stage) {
-        waitForSync = false;
-        pauseSimulation = true;
-        Task<Void> task = new Task<Void>() {
+        record = new DoubleMatrix(tMax, 7);
+        simulation = new Simulation() {
             @Override
-            protected Void call() throws Exception {
-                record = new DoubleMatrix(tSteps, 3);
-                for (int step = 0; step < tSteps; step += 1) {
-                    while (pauseSimulation) {
-                        Thread.sleep(50);
-                    }
-                    
-                    final double t = step * dt;
-                    try {
-                        network.update(step);
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                    
-                    raster.bufferSpikes(t);
-                    lfpPlot.bufferLfp(t);
-                    
-                    record.put(step, 0, t);
-                    record.put(step, 1, 0);
-                    record.put(step, 2, lfpPlot.getLfp());
-                    
-                    if (step % 50 == 0 || step == tSteps - 1) {
-                        waitForSync = true;
-                        Platform.runLater(() -> {
-                            raster.updatePlot(t);
-                            lfpPlot.updatePlot(t);
-                            waitForSync = false;
-                        });
-                        Thread.sleep(0);
-                        while (waitForSync) {
-                            Thread.sleep(5);
-                        }
-                    }
+            public void update() {
+                network.update(getStep());
+                
+                raster.bufferSpikes(getTime());
+                lfpPlot.bufferLfp(getTime());
+                
+                record.put(getStep(), 0, getTime());
+                record.put(getStep(), 1, thlInput.getNoise());
+                record.put(getStep(), 2, thlInput.getIntensity());
+                record.put(getStep(), 3, thl.getSpikes().sum());
+                record.put(getStep(), 4, ctx.getSpikes().sum());
+                record.put(getStep(), 5, stn.getSpikes().sum());
+                record.put(getStep(), 6, lfpPlot.getLfp());
+                
+                if (getStep() % 20 == 0 || getStep() == tMax - 1) {
+                    sync();
+                    Platform.runLater(() -> {
+                        raster.updatePlot(getTime());
+                        lfpPlot.updatePlot(getTime());
+                        sync();
+                    });
                 }
-                return null;
             }
         };
-        Thread thread = new Thread(task);
         stage.setOnCloseRequest(event -> {
-            pauseSimulation = true;
-            try {
-                network.shutdown();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            thread.interrupt();
+            simulation.stop();
+            network.shutdown();
         });
-        thread.start();
     }
 }

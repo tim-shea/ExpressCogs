@@ -82,8 +82,12 @@ public class Network {
         }
     }
     
-    public void shutdown() throws InterruptedException {
+    public void shutdown() {
         executor.shutdown();
-        executor.awaitTermination(1, TimeUnit.SECONDS);
+        try {
+            executor.awaitTermination(1, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 }

@@ -33,6 +33,8 @@ public class LifNeuronGroup implements NeuronGroup {
     private double vThresh = -50e-3;
     private double gEDecay = 0.1;
     private double gIDecay = 0.1;
+    private double gEMax = 4e-3;
+    private double gIMax = 4e-3;
     private InputGenerator generator;
 
     public LifNeuronGroup(String name, int size, boolean excitatory, InputGenerator generator) {
@@ -82,8 +84,8 @@ public class LifNeuronGroup implements NeuronGroup {
             }
         }
         // Apply a ceiling to the input currents?
-        gE.put(gE.gt(4e-3), 4e-3);
-        gI.put(gI.gt(4e-3), 4e-3);
+        gE.put(gE.gt(gEMax), gEMax);
+        gI.put(gI.gt(gIMax), gIMax);
         i.addi(gE).subi(gI);
         // dv = -vDecay * (v - eL) + i
         v.subi(vRest, dv).muli(-vDecay).addi(i);

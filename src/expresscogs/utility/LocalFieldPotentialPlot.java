@@ -1,35 +1,42 @@
 package expresscogs.utility;
 
-import java.util.LinkedList;
-import java.util.List;
-
 import org.jblas.DoubleMatrix;
 import org.jblas.MatrixFunctions;
+import org.jblas.ranges.IntervalRange;
+import org.jblas.ranges.PointRange;
 
 import expresscogs.network.NeuronGroup;
 import javafx.scene.chart.XYChart;
 
 public class LocalFieldPotentialPlot {
+    private final int WINDOW_LENGTH = 27;
+    private final double lowCutoff = 0.5;
+    private final double highCutoff = 60;
+    private final int frequency = 1000;
+    private final double plotWidth = 1.0;
+    
     private TimeSeriesPlot plot = TimeSeriesPlot.line();
     private NeuronGroup neurons;
-    private List<BufferedDataSeries> data = new LinkedList<BufferedDataSeries>();
-    private double windowSize = 1;
-    private double lfp;
+    private BufferedDataSeries series;
     private DoubleMatrix distanceToElectrode;
-    
-    //int windowLength = 67;
-    //double[] filterWeights = BandPassFilter.sincFilter2(windowLength, 1, 30, 1000, BandPassFilter.filterType.BAND_PASS);
-    //filterWeights = BandPassFilter.createWindow(filterWeights, null, windowLength, BandPassFilter.windowType.HAMMING);
-    //DoubleMatrix lfpFilter = new DoubleMatrix(filterWeights);
-    //DoubleMatrix lfpData = new DoubleMatrix(windowLength);
+    private double[] filterWeights;
+    private DoubleMatrix lfpFilter;
+    private DoubleMatrix lfpData = new DoubleMatrix(WINDOW_LENGTH);
+    private double lfp;
+    private double previousTrend = 0;
+    private double trend = 0;
+    private int detrendLength = 1000;
+    private int step = 0;
     
     public LocalFieldPotentialPlot(NeuronGroup neurons) {
         this.neurons = neurons;
-        BufferedDataSeries series = plot.addSeries("LFP");
+        series = plot.addSeries("LFP");
         series.setMaxLength(0);
-        data.add(series);
         plot.setAutoRanging(false, true);
         setElectrodePosition(0.5, 0.5);
+        filterWeights = BandPassFilter.sincFilter2(WINDOW_LENGTH, lowCutoff, highCutoff, frequency, BandPassFilter.filterType.BAND_PASS);
+        filterWeights = BandPassFilter.createWindow(filterWeights, null, WINDOW_LENGTH, BandPassFilter.windowType.HANNING);
+        lfpFilter = new DoubleMatrix(filterWeights);
     }
     
     private void setElectrodePosition(double x, double y) {
@@ -47,13 +54,19 @@ public class LocalFieldPotentialPlot {
     public void bufferLfp(double t) {
         DoubleMatrix c = neurons.getExcitatoryConductance().sub(neurons.getInhibitoryConductance());
         lfp = c.divi(distanceToElectrode).sum();
-        plot.bufferPoint("LFP", t, lfp);
-        
-        //lfpData.put(new IntervalRange(0, windowLength - 1), new PointRange(0),
-        //        lfpData.get(new IntervalRange(1, windowLength), new PointRange(0)));
-        //lfpData.put(windowLength - 1, lfp);
-        //double theta = lfpData.dot(lfpFilter);
-        //lfpPlot.bufferPoint("Theta", t - dt * (windowLength / 2), theta);
+        lfpData.put(new IntervalRange(0, WINDOW_LENGTH - 1), new PointRange(0),
+                lfpData.get(new IntervalRange(1, WINDOW_LENGTH), new PointRange(0)));
+        lfpData.put(WINDOW_LENGTH - 1, lfp);
+        double filteredLfp = lfpData.dot(lfpFilter);
+        plot.bufferPoint("LFP", t - (1.0 / frequency) * (WINDOW_LENGTH / 2), filteredLfp);
+        if (step == detrendLength) {
+            previousTrend = trend;
+            trend = 0;
+            step = 0;
+        } else {
+            trend += filteredLfp / detrendLength;
+            step++;
+        }
     }
     
     public double getLfp() {
@@ -61,18 +74,8 @@ public class LocalFieldPotentialPlot {
     }
     
     public void updatePlot(double t) {
-        for (BufferedDataSeries series : data) {
-            series.setMinXValue(t - windowSize);
-        }
+        series.setMinXValue(t - plotWidth);
         plot.addPoints();
-        plot.setXLimits(t - windowSize, t);
-    }
-    
-    public double getWindowSize() {
-        return windowSize;
-    }
-    
-    public void setWindowSize(double value) {
-        windowSize = value;
+        plot.setXLimits(t - plotWidth, t);
     }
 }

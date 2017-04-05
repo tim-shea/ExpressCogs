@@ -17,7 +17,7 @@ public class StimulusGeneratorTool extends VBox {
     
     private void createSliders() {
         Slider snrSlider = ViewUtility.createSlider(this, "Signal-to-Noise Ratio", generator.getSignalToNoiseRatio(),
-                0, 5, (observable, oldValue, newValue) -> {
+                0, 4, (observable, oldValue, newValue) -> {
             generator.setSignalToNoiseRatio(newValue.doubleValue());
         });
         ViewUtility.createSlider(this, "Noise Scale", generator.getNoise(), 0, 3e-3, (observable, oldValue, newValue) -> {

@@ -18,7 +18,7 @@ public class ContinuousStimulusGenerator implements InputGenerator {
     private DoubleMatrix stimulus;
     private double position = 0.5;
     private double noise = 0.5e-3;
-    private double intensity = 3e-3;
+    private double intensity = 0.5e-3;
     private double width = 0.1;
     
     /** Return the scale of random noise added to the stimulus each update. */
