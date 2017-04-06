@@ -14,8 +14,9 @@ public class NeuralFieldPlot {
     
     public NeuralFieldPlot() {
         series = plot.addSeries("Neural Field");
-        plot.setAutoRanging(false, true);
+        plot.setAutoRanging(false, false);
         plot.setXLimits(0, 1);
+        plot.setYLimits(0, 100);
     }
     
     public void setNeuronGroup(NeuronGroup neurons) {
@@ -31,13 +32,13 @@ public class NeuralFieldPlot {
     public void bufferNeuralField(double t) {
         if (neurons != null) {
             field.addi(neurons.getSpikes());
+            field.muli(0.999);
         }
     }
     
     public void updatePlot(double t) {
         if (neurons != null) {
-            plot.bufferPoints("Neural Field", neurons.getXPosition().data, field.mul(timescale).data);
-            field.fill(0);
+            plot.bufferPoints("Neural Field", neurons.getXPosition().data, field.data);
             plot.addPoints();
         }
     }

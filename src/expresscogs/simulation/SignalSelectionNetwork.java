@@ -15,6 +15,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.ScrollPane.ScrollBarPolicy;
+import javafx.scene.control.ToggleButton;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -62,9 +63,9 @@ public class SignalSelectionNetwork extends Application {
     private double lowBackgroundInput = 0.0e-3;
     private double highBackgroundInput = 0.2e-3;
     private int groupSize = 1000;
-    private SynapseGroupTopology narrow = new NeighborhoodTopology(0.1, 0.05);
-    private SynapseGroupTopology wide = new NeighborhoodTopology(0.1, 0.5);
-    private double weightScale = 1e-4;
+    private SynapseGroupTopology narrow = new NeighborhoodTopology(0.2, 0.05);
+    private SynapseGroupTopology wide = new NeighborhoodTopology(0.2, 0.5);
+    private double weightScale = 0.5e-4;
     private ContinuousStimulusGenerator thlInput;
     
     // Neuron groups
@@ -199,6 +200,10 @@ public class SignalSelectionNetwork extends Application {
         //ResizingSeparator plotSeparator = new ResizingSeparator(raster.getChart(), Orientation.HORIZONTAL);
         //plotContainer.getChildren().add(plotSeparator);
         
+        ToggleButton spikeRasterToggle = new ToggleButton("Raster");
+        ToggleButton neuralFieldToggle = new ToggleButton("Field");
+        //spikeRasterToggle.onActionProperty().addListener(listener);
+        
         ComboBox<String> neuronGroupCombo = new ComboBox<String>();
         neuronGroupCombo.getItems().addAll("THL", "CTX", "STR", "ST2", "STN", "GPI", "GPE");
         neuronGroupCombo.valueProperty().addListener((listener, oldValue, newValue) -> {
@@ -241,8 +246,7 @@ public class SignalSelectionNetwork extends Application {
                     sync();
                     Platform.runLater(() -> {
                         //raster.updatePlot(t);
-                        if (getStep() % 1000 == 0)
-                            fieldPlot.updatePlot(t);
+                        fieldPlot.updatePlot(t);
                         lfpPlot.updatePlot(t);
                         sync();
                     });

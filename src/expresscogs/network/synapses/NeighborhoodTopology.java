@@ -66,9 +66,9 @@ public class NeighborhoodTopology implements SynapseGroupTopology {
         DoubleMatrix distance = getDistanceMatrix(source, target);
         DoubleMatrix probability = normalPdf(distance, 0.0, neighborhood);
         // Scale overall probability matrix to connectivity (edges receive fewer connections)
-        probability.divi(probability.mean()).muli(connectivity);
+        //probability.divi(probability.mean()).muli(connectivity);
         // Scale probability matrix rows to connectivity
-        //probability.diviColumnVector(probability.rowMeans()).muli(connectivity);
+        probability.diviColumnVector(probability.rowMeans()).muli(connectivity);
         DoubleMatrix connections = DoubleMatrix.rand(source.getSize(), target.getSize());
         connections.lti(probability);
         if (source == target && !selfSynapses) {

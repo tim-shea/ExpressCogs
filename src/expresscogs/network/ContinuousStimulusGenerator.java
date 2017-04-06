@@ -82,7 +82,7 @@ public class ContinuousStimulusGenerator implements InputGenerator {
     public DoubleMatrix generate(NeuronGroup neurons) {
         stimulus = MatrixFunctions.absi(neurons.getXPosition().sub(position)).subi(width).negi();
         stimulus.put(stimulus.lt(0), 0);
-        stimulus.muli(intensity / width);
+        stimulus.muli(1 / width).muli(stimulus).muli(intensity);
         stimulus.addi(noise);
         return DoubleMatrix.rand(neurons.getSize()).muli(stimulus);
     }
