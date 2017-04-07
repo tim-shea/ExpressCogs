@@ -33,7 +33,7 @@ public class HeatMap {
         pane.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         pane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         pane.setPannable(true);
-        TimeSeriesPlot.container.getChildren().add(pane);
+        //TimeSeriesPlot.container.getChildren().add(pane);
         pane.widthProperty().addListener((observable, oldValue, newValue) -> rescale());
         pane.heightProperty().addListener((observable, oldValue, newValue) -> rescale());
         imageView.fitWidthProperty().bind(pane.widthProperty());

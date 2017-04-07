@@ -9,12 +9,6 @@ import javafx.scene.chart.XYChart;
 import javafx.scene.layout.Pane;
 
 public class TimeSeriesPlot {
-    static Pane container;
-    
-    public static void init(Pane container) {
-        TimeSeriesPlot.container = container;
-    }
-    
     public static TimeSeriesPlot scatter() {
         TimeSeriesPlot plot = new TimeSeriesPlot();
         plot.createScatter();
@@ -49,13 +43,11 @@ public class TimeSeriesPlot {
     private void createScatter() {
         chart = new ScatterChart<Number, Number>(xAxis, yAxis);
         chart.setAnimated(false);
-        container.getChildren().add(chart);
     }
     
     private void createLine() {
         chart = new LineChart<Number, Number>(xAxis, yAxis);
         chart.setAnimated(false);
-        container.getChildren().add(chart);
     }
     
     public BufferedDataSeries addSeries(String label) {

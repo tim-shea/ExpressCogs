@@ -11,13 +11,15 @@ public abstract class Simulation {
     private double dt = 0.001;
     // Current simulation timestep
     private int step = 0;
+    // Number of model updates between visualization updates
+    private int stepsBetweenVis = 20;
     // Asynchronous simulation thread
     private Thread thread;
     
     public void runInThread(int timesteps) {
         run = true;
         while (step < timesteps && run) {
-            update();
+            updateModel();
             ++step;
         }
     }
@@ -29,7 +31,10 @@ public abstract class Simulation {
                 run = true;
                 while (step < timesteps && run) {
                     try {
-                        update();
+                        updateModel();
+                        if (step % stepsBetweenVis == 0 || step == timesteps - 1) {
+                            updateVisualization();
+                        }
                     } catch (Exception e) {
                         e.printStackTrace();
                         System.exit(1);
@@ -65,7 +70,9 @@ public abstract class Simulation {
         waitForSync = !waitForSync;
     }
     
-    public abstract void update();
+    public abstract void updateModel();
+    
+    public void updateVisualization() {}
     
     public int getStep() {
         return step;
@@ -73,5 +80,13 @@ public abstract class Simulation {
     
     public double getTime() {
         return step * dt;
+    }
+    
+    public int getStepsBetweenVisualizationUpdate() {
+        return stepsBetweenVis;
+    }
+    
+    public void setStepsBetweenVisualizationUpdate(int value) {
+        stepsBetweenVis = value;
     }
 }

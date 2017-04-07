@@ -32,9 +32,15 @@ public class ResizingSeparator extends Separator {
     protected void mouseDragged(MouseEvent event) {
         if (dragging) {
             if (getOrientation() == Orientation.VERTICAL) {
-                region.setPrefWidth(event.getSceneX());
+                double mouseX = event.getSceneX();
+                double regionX = region.localToScene(region.getBoundsInLocal()).getMinX();
+                region.setMinWidth(mouseX - regionX);
+                region.setPrefWidth(mouseX - regionX);
             } else {
-                region.setPrefHeight(event.getSceneY());
+                double mouseY = event.getSceneY();
+                double regionY = region.localToScene(region.getBoundsInLocal()).getMinY();
+                region.setMinHeight(mouseY - regionY);
+                region.setPrefHeight(mouseY - regionY);
             }
         }
     }

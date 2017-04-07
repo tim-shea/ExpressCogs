@@ -15,6 +15,7 @@ public class SpikeRasterPlot {
     private List<BufferedDataSeries> data = new LinkedList<BufferedDataSeries>();
     private double windowSize = 1;
     private List<DoubleMatrix> sampleIndices = new LinkedList<DoubleMatrix>();
+    private boolean enabled = true;
     
     public SpikeRasterPlot(Network network, int sampleSize) {
         this.network = network;
@@ -27,11 +28,22 @@ public class SpikeRasterPlot {
         }
     }
     
+    public boolean isEnabled() {
+        return enabled;
+    }
+    
+    public void setEnabled(boolean value) {
+        enabled = value;
+    }
+    
     public XYChart<Number, Number> getChart() {
         return plot.getChart();
     }
     
     public void bufferSpikes(double t) {
+        if (!enabled) {
+            return;
+        }
         double offset = 0;
         int i = 0;
         for (NeuronGroup group : network.getNeuronGroups()) {
@@ -43,6 +55,9 @@ public class SpikeRasterPlot {
     }
     
     public void updatePlot(double t) {
+        if (!enabled) {
+            return;
+        }
         for (BufferedDataSeries series : data) {
             series.setMinXValue(t - windowSize);
         }

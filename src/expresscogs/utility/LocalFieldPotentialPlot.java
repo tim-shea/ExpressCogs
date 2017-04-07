@@ -27,6 +27,7 @@ public class LocalFieldPotentialPlot {
     private double trend = 0;
     private int detrendLength = 1000;
     private int step = 0;
+    private boolean enabled = true;
     
     public LocalFieldPotentialPlot(NeuronGroup neurons) {
         this.neurons = neurons;
@@ -37,6 +38,14 @@ public class LocalFieldPotentialPlot {
         filterWeights = BandPassFilter.sincFilter2(WINDOW_LENGTH, lowCutoff, highCutoff, frequency, BandPassFilter.filterType.BAND_PASS);
         filterWeights = BandPassFilter.createWindow(filterWeights, null, WINDOW_LENGTH, BandPassFilter.windowType.HANNING);
         lfpFilter = new DoubleMatrix(filterWeights);
+    }
+    
+    public boolean isEnabled() {
+        return enabled;
+    }
+    
+    public void setEnabled(boolean value) {
+        enabled = value;
     }
     
     private void setElectrodePosition(double x, double y) {
@@ -52,6 +61,9 @@ public class LocalFieldPotentialPlot {
     }
     
     public void bufferLfp(double t) {
+        if (!enabled) {
+            return;
+        }
         DoubleMatrix c = neurons.getExcitatoryConductance().sub(neurons.getInhibitoryConductance());
         lfp = c.divi(distanceToElectrode).sum();
         lfpData.put(new IntervalRange(0, WINDOW_LENGTH - 1), new PointRange(0),
@@ -69,11 +81,10 @@ public class LocalFieldPotentialPlot {
         }
     }
     
-    public double getLfp() {
-        return lfp;
-    }
-    
     public void updatePlot(double t) {
+        if (!enabled) {
+            return;
+        }
         series.setMinXValue(t - plotWidth);
         plot.addPoints();
         plot.setXLimits(t - plotWidth, t);

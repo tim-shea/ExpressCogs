@@ -1,6 +1,7 @@
 package expresscogs.simulation;
 
 import expresscogs.gui.ResizingSeparator;
+import expresscogs.gui.SimulationTool;
 import expresscogs.gui.StimulusGeneratorTool;
 import expresscogs.gui.SynapseScalingTool;
 import expresscogs.network.*;
@@ -15,6 +16,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.ScrollPane.ScrollBarPolicy;
+import javafx.scene.control.TitledPane;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
@@ -63,9 +65,9 @@ public class SignalSelectionNetwork extends Application {
     private double lowBackgroundInput = 0.0e-3;
     private double highBackgroundInput = 0.2e-3;
     private int groupSize = 1000;
-    private SynapseGroupTopology narrow = new NeighborhoodTopology(0.2, 0.05);
-    private SynapseGroupTopology wide = new NeighborhoodTopology(0.2, 0.5);
-    private double weightScale = 0.5e-4;
+    private SynapseGroupTopology narrow = new NeighborhoodTopology(0.1, 0.05);
+    private SynapseGroupTopology wide = new NeighborhoodTopology(0.1, 0.5);
+    private double weightScale = 1e-4;
     private ContinuousStimulusGenerator thlInput;
     
     // Neuron groups
@@ -78,7 +80,7 @@ public class SignalSelectionNetwork extends Application {
     private NeuronGroup st2;
     
     // Charts for visualization
-    private SpikeRasterPlot raster;
+    private SpikeRasterPlot rasterPlot;
     private NeuralFieldPlot fieldPlot;
     private LocalFieldPotentialPlot lfpPlot;
     private DoubleMatrix record;
@@ -107,21 +109,54 @@ public class SignalSelectionNetwork extends Application {
         network.addNeuronGroups(thl, ctx, str, st2, stn, gpi, gpe);
         
         // Setup the selection pathway synapse groups
-        SynapseGroup thlCtx = SynapseFactory.connect(thl, ctx, narrow, 1 * weightScale);
-        SynapseGroup ctxStr = SynapseFactory.connect(ctx, str, narrow, 0.5 * weightScale);
-        SynapseGroup ctxStn = SynapseFactory.connect(ctx, stn, wide, 1 * weightScale);
-        SynapseGroup strGpi = SynapseFactory.connect(str, gpi, narrow, 0.5 * weightScale);
-        SynapseGroup stnGpi = SynapseFactory.connect(stn, gpi, wide, 1 * weightScale);
-        SynapseGroup gpiThl = SynapseFactory.connect(gpi, thl, narrow, 1 * weightScale);
+        SynapseGroup thlCtx = SynapseFactory.connectWithDelay(thl, ctx, narrow, 1 * weightScale);
+        SynapseGroup ctxStr = SynapseFactory.connectWithDelay(ctx, str, narrow, 0.5 * weightScale);
+        SynapseGroup ctxStn = SynapseFactory.connectWithDelay(ctx, stn, wide, 1 * weightScale);
+        SynapseGroup strGpi = SynapseFactory.connectWithDelay(str, gpi, narrow, 0.5 * weightScale);
+        SynapseGroup stnGpi = SynapseFactory.connectWithDelay(stn, gpi, wide, 1 * weightScale);
+        SynapseGroup gpiThl = SynapseFactory.connectWithDelay(gpi, thl, narrow, 1 * weightScale);
         network.addSynapseGroups(thlCtx, ctxStr, ctxStn, strGpi, stnGpi, gpiThl);
         
         // Setup the control pathway synapse groups
-        SynapseGroup ctxSt2 = SynapseFactory.connect(ctx, st2, narrow, 0.5 * weightScale);
-        SynapseGroup st2Gpe = SynapseFactory.connect(st2, gpe, narrow, 0.5 * weightScale);
-        SynapseGroup stnGpe = SynapseFactory.connect(stn, gpe, wide, 1 * weightScale);
-        SynapseGroup gpeStn = SynapseFactory.connect(gpe, stn, narrow, 0.5 * weightScale);
-        SynapseGroup gpeGpi = SynapseFactory.connect(gpe, gpi, narrow, 0.5 * weightScale);
+        SynapseGroup ctxSt2 = SynapseFactory.connectWithDelay(ctx, st2, narrow, 0.5 * weightScale);
+        SynapseGroup st2Gpe = SynapseFactory.connectWithDelay(st2, gpe, narrow, 0.5 * weightScale);
+        SynapseGroup stnGpe = SynapseFactory.connectWithDelay(stn, gpe, wide, 1 * weightScale);
+        SynapseGroup gpeStn = SynapseFactory.connectWithDelay(gpe, stn, narrow, 0.5 * weightScale);
+        SynapseGroup gpeGpi = SynapseFactory.connectWithDelay(gpe, gpi, narrow, 0.5 * weightScale);
         network.addSynapseGroups(ctxSt2, st2Gpe, stnGpe, gpeStn, gpeGpi);
+        
+        record = new DoubleMatrix(tMax, 7);
+        simulation = new Simulation() {
+            @Override
+            public void updateModel() {
+                final double t = getTime();
+                network.update(getStep());
+                
+                rasterPlot.bufferSpikes(t);
+                fieldPlot.bufferNeuralField(t);
+                lfpPlot.bufferLfp(t);
+                
+                record.put(getStep(), 0, getTime());
+                record.put(getStep(), 1, thlInput.getNoise());
+                record.put(getStep(), 2, thlInput.getIntensity());
+                record.put(getStep(), 3, thl.getSpikes().sum());
+                record.put(getStep(), 4, ctx.getSpikes().sum());
+                record.put(getStep(), 5, stn.getSpikes().sum());
+                //record.put(getStep(), 6, lfpPlot.getLfp());
+            }
+            
+            @Override
+            public void updateVisualization() {
+                final double t = getTime();
+                sync();
+                Platform.runLater(() -> {
+                    rasterPlot.updatePlot(t);
+                    fieldPlot.updatePlot(t);
+                    lfpPlot.updatePlot(t);
+                    sync();
+                });
+            }
+        };
     }
     
     /** Setup a visualization of the network activity. */
@@ -133,89 +168,74 @@ public class SignalSelectionNetwork extends Application {
         scene.getStylesheets().add("styles/plotstyles.css");
         stage.setScene(scene);
         
-        FlowPane toolbar = new FlowPane();
-        toolbar.setHgap(10);
-        
-        Button runButton = new Button("run");
-        runButton.setOnAction(event -> simulation.runAsync(tMax));
-        
-        Button pauseButton = new Button("stop");
-        pauseButton.setOnAction(event -> simulation.stop());
-        
-        FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Save As...");
-        fileChooser.setInitialDirectory(new File(System.getProperty("user.home") + "/desktop/"));
-        fileChooser.setInitialFileName("lfp_data.csv");
-        Button saveButton = new Button("save");
-        saveButton.setOnAction(event -> {
-            File file = fileChooser.showSaveDialog(stage);
-            if (file != null) {
-                NumberFormat format = DecimalFormat.getNumberInstance();
-                try {
-                    BufferedWriter writer = new BufferedWriter(new FileWriter(file));
-                    writer.write("t,ns,in,thl,ctx,stn,lfp");
-                    writer.newLine();
-                    for (int i = 0; i < record.rows; ++i) {
-                        writer.write(format.format(record.get(i, 0)) + ',');
-                        writer.write(format.format(record.get(i, 1)) + ',');
-                        writer.write(format.format(record.get(i, 2)) + ',');
-                        writer.write(format.format(record.get(i, 3)) + ',');
-                        writer.write(format.format(record.get(i, 4)) + ',');
-                        writer.write(format.format(record.get(i, 5)) + ',');
-                        writer.write(format.format(record.get(i, 6)));
-                        writer.newLine();
-                    }
-                    writer.flush();
-                    writer.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        });
-        
+        SimulationTool simulationTool = new SimulationTool(simulation);
         StimulusGeneratorTool stimulusTool = new StimulusGeneratorTool(thlInput);
         SynapseScalingTool synapseTool = new SynapseScalingTool(network, 0, weightScale * 2);
         
-        toolbar.getChildren().addAll(runButton, pauseButton, saveButton);
-        mainContainer.getChildren().add(toolbar);
         HBox hbox = new HBox();
+        VBox.setVgrow(hbox, Priority.ALWAYS);
         mainContainer.getChildren().add(hbox);
         ScrollPane toolboxScrollPane = new ScrollPane();
+        toolboxScrollPane.setStyle("-fx-background-color: transparent");
         toolboxScrollPane.setHbarPolicy(ScrollBarPolicy.NEVER);
         VBox toolbox = new VBox();
         ResizingSeparator toolSeparator = new ResizingSeparator(toolboxScrollPane, Orientation.VERTICAL);
-        toolbox.getChildren().addAll(stimulusTool, synapseTool);
+        toolbox.getChildren().addAll(simulationTool, stimulusTool, synapseTool);
         hbox.getChildren().addAll(toolboxScrollPane, toolSeparator);
         toolboxScrollPane.setContent(toolbox);
         toolboxScrollPane.setFitToWidth(true);
         
+        ScrollPane plotScrollPane = new ScrollPane();
+        plotScrollPane.setStyle("-fx-background-color: transparent");
+        plotScrollPane.setHbarPolicy(ScrollBarPolicy.NEVER);
         VBox plotContainer = new VBox();
-        mainContainer.setPadding(new Insets(10, 10, 10, 10));
+        plotScrollPane.setContent(plotContainer);
+        HBox.setHgrow(plotScrollPane, Priority.ALWAYS);
+        plotScrollPane.setFitToHeight(true);
+        plotScrollPane.setFitToWidth(true);
+        mainContainer.setPadding(new Insets(4, 4, 4, 4));
         mainContainer.setSpacing(10);
-        hbox.getChildren().add(plotContainer);
-        HBox.setHgrow(plotContainer, Priority.ALWAYS);
-        TimeSeriesPlot.init(plotContainer);
+        hbox.getChildren().add(plotScrollPane);
         
-        //raster = new SpikeRasterPlot(network, 100);
-        //ResizingSeparator plotSeparator = new ResizingSeparator(raster.getChart(), Orientation.HORIZONTAL);
-        //plotContainer.getChildren().add(plotSeparator);
-        
-        ToggleButton spikeRasterToggle = new ToggleButton("Raster");
-        ToggleButton neuralFieldToggle = new ToggleButton("Field");
-        //spikeRasterToggle.onActionProperty().addListener(listener);
-        
+        HBox plotControlsContainer = new HBox();
+        plotContainer.getChildren().addAll(plotControlsContainer);
         ComboBox<String> neuronGroupCombo = new ComboBox<String>();
         neuronGroupCombo.getItems().addAll("THL", "CTX", "STR", "ST2", "STN", "GPI", "GPE");
         neuronGroupCombo.valueProperty().addListener((listener, oldValue, newValue) -> {
             fieldPlot.setNeuronGroup(network.getNeuronGroup(newValue));
         });
-        plotContainer.getChildren().add(neuronGroupCombo);
+        plotControlsContainer.getChildren().add(neuronGroupCombo);
+        
+        rasterPlot = new SpikeRasterPlot(network, 100);
+        TitledPane rasterPlotContainer = new TitledPane("Spike Raster Plot", rasterPlot.getChart());
+        rasterPlotContainer.expandedProperty().addListener((listener, oldValue, newValue) -> {
+            rasterPlot.setEnabled(newValue);
+        });
+        rasterPlotContainer.setAnimated(false);
+        plotContainer.getChildren().add(rasterPlotContainer);
+        ResizingSeparator rasterSeparator = new ResizingSeparator(rasterPlot.getChart(), Orientation.HORIZONTAL);
+        plotContainer.getChildren().add(rasterSeparator);
+        VBox.setVgrow(rasterPlot.getChart(), Priority.ALWAYS);
+        
         fieldPlot = new NeuralFieldPlot();
+        TitledPane fieldPlotContainer = new TitledPane("Neural Field Plot", fieldPlot.getChart());
+        fieldPlotContainer.setAnimated(false);
+        fieldPlotContainer.expandedProperty().addListener((listener, oldValue, newValue) -> {
+            fieldPlot.setEnabled(newValue);
+        });
+        plotContainer.getChildren().add(fieldPlotContainer);
+        VBox.setVgrow(fieldPlot.getChart(), Priority.ALWAYS);
         neuronGroupCombo.setValue("THL");
         ResizingSeparator plotSeparator = new ResizingSeparator(fieldPlot.getChart(), Orientation.HORIZONTAL);
         plotContainer.getChildren().add(plotSeparator);
         
         lfpPlot = new LocalFieldPotentialPlot(stn);
+        TitledPane lfpPlotContainer = new TitledPane("Local Field Potential Plot", lfpPlot.getChart());
+        lfpPlotContainer.setAnimated(false);
+        lfpPlotContainer.expandedProperty().addListener((listener, oldValue, newValue) -> {
+            lfpPlot.setEnabled(newValue);
+        });
+        plotContainer.getChildren().add(lfpPlotContainer);
         VBox.setVgrow(lfpPlot.getChart(), Priority.ALWAYS);
         
         stage.show();
@@ -223,36 +243,6 @@ public class SignalSelectionNetwork extends Application {
     
     /** Run the simulation on a new thread. */
     private void runSimulation(Stage stage) {
-        record = new DoubleMatrix(tMax, 7);
-        simulation = new Simulation() {
-            @Override
-            public void update() {
-                final double t = getTime();
-                network.update(getStep());
-                
-                //raster.bufferSpikes(t);
-                fieldPlot.bufferNeuralField(t);
-                lfpPlot.bufferLfp(t);
-                
-                record.put(getStep(), 0, getTime());
-                record.put(getStep(), 1, thlInput.getNoise());
-                record.put(getStep(), 2, thlInput.getIntensity());
-                record.put(getStep(), 3, thl.getSpikes().sum());
-                record.put(getStep(), 4, ctx.getSpikes().sum());
-                record.put(getStep(), 5, stn.getSpikes().sum());
-                record.put(getStep(), 6, lfpPlot.getLfp());
-                
-                if (getStep() % 20 == 0 || getStep() == tMax - 1) {
-                    sync();
-                    Platform.runLater(() -> {
-                        //raster.updatePlot(t);
-                        fieldPlot.updatePlot(t);
-                        lfpPlot.updatePlot(t);
-                        sync();
-                    });
-                }
-            }
-        };
         stage.setOnCloseRequest(event -> {
             simulation.stop();
             network.shutdown();

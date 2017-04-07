@@ -5,18 +5,27 @@ import expresscogs.network.NeuronGroup;
 import javafx.scene.chart.XYChart;
 
 public class NeuralFieldPlot {
-    private final double timescale = 1;
+    private static final double decay = 0.98;
     
     private TimeSeriesPlot plot = TimeSeriesPlot.line();
     private NeuronGroup neurons;
     private DoubleMatrix field;
     private BufferedDataSeries series;
+    private boolean enabled = true;
     
     public NeuralFieldPlot() {
         series = plot.addSeries("Neural Field");
         plot.setAutoRanging(false, false);
         plot.setXLimits(0, 1);
         plot.setYLimits(0, 100);
+    }
+    
+    public boolean isEnabled() {
+        return enabled;
+    }
+    
+    public void setEnabled(boolean value) {
+        enabled = value;
     }
     
     public void setNeuronGroup(NeuronGroup neurons) {
@@ -30,14 +39,21 @@ public class NeuralFieldPlot {
     }
     
     public void bufferNeuralField(double t) {
+        if (!enabled) {
+            return;
+        }
         if (neurons != null) {
             field.addi(neurons.getSpikes());
-            field.muli(0.999);
+            //field.muli(0.999);
         }
     }
     
     public void updatePlot(double t) {
+        if (!enabled) {
+            return;
+        }
         if (neurons != null) {
+            field.muli(decay);
             plot.bufferPoints("Neural Field", neurons.getXPosition().data, field.data);
             plot.addPoints();
         }

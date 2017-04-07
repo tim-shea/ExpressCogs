@@ -10,7 +10,7 @@ import expresscogs.network.NeuronGroup;
  *
  * Author: Tim
  */
-public class StdpSynapseGroup extends DelaySynapseGroup {
+public class StdpSynapseGroup extends FixedDelaySynapseGroup {
     public StdpSynapseGroup(String name, NeuronGroup source, NeuronGroup target, DoubleMatrix index, int maxDelay) {
         super(name, source, target, index, maxDelay);
     }
