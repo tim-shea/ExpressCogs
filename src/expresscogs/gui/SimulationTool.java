@@ -6,6 +6,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
+import java.text.ParseException;
 
 import expresscogs.simulation.Simulation;
 import javafx.geometry.Insets;
@@ -80,7 +81,17 @@ public class SimulationTool extends TitledPane {
         buttonBar.getChildren().addAll(runButton, saveButton);
         
         TextField updateVisField = new TextField();
-        NumberFormat format = NumberFormat.getInstance();
+        NumberFormat format = NumberFormat.getIntegerInstance();
+        updateVisField.setText(format.format(simulation.getStepsBetweenVisualizationUpdate()));
+        updateVisField.textProperty().addListener((listener, oldValue, newValue) -> {
+            try {
+                int value = format.parse(newValue).intValue();
+                simulation.setStepsBetweenVisualizationUpdate(value);
+            } catch (ParseException e) {
+                String value = format.format(simulation.getStepsBetweenVisualizationUpdate());
+                updateVisField.setText(value);
+            }
+        });
         controls.getChildren().add(updateVisField);
     }
 }

@@ -26,7 +26,7 @@ public class StimulusGeneratorTool extends TitledPane {
                 0, 4, (observable, oldValue, newValue) -> {
             generator.setSignalToNoiseRatio(newValue.doubleValue());
         });
-        ViewUtility.createSlider(controls, "Noise Scale", generator.getNoise(), 0, 3e-3, (observable, oldValue, newValue) -> {
+        ViewUtility.createSlider(controls, "Noise Scale", generator.getNoise(), 0, 2e-3, (observable, oldValue, newValue) -> {
             generator.setNoise(newValue.doubleValue());
             generator.setSignalToNoiseRatio(snrSlider.getValue());
         });

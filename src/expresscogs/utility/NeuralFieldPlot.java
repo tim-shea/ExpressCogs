@@ -5,7 +5,7 @@ import expresscogs.network.NeuronGroup;
 import javafx.scene.chart.XYChart;
 
 public class NeuralFieldPlot {
-    private static final double decay = 0.98;
+    private static final double decay = 0.96;
     
     private TimeSeriesPlot plot = TimeSeriesPlot.line();
     private NeuronGroup neurons;
@@ -54,7 +54,7 @@ public class NeuralFieldPlot {
         }
         if (neurons != null) {
             field.muli(decay);
-            plot.bufferPoints("Neural Field", neurons.getXPosition().data, field.data);
+            plot.bufferPoints("Neural Field", neurons.getXPosition().data, field.mul(2).data);
             plot.addPoints();
         }
     }
