@@ -25,6 +25,7 @@ public class LifNeuronGroup implements NeuronGroup {
     private DoubleMatrix i;
     private DoubleMatrix gE;
     private DoubleMatrix gI;
+    private DoubleMatrix gL;
     private DoubleMatrix v;
     private DoubleMatrix dv;
     private DoubleMatrix spk;
@@ -46,6 +47,7 @@ public class LifNeuronGroup implements NeuronGroup {
         i = DoubleMatrix.zeros(size);
         gE = DoubleMatrix.zeros(size);
         gI = DoubleMatrix.zeros(size);
+        gL = DoubleMatrix.zeros(size);
         v = DoubleMatrix.ones(size).muli(vRest).addi(DoubleMatrix.rand(size).muli(vThresh - vRest));
         dv = DoubleMatrix.zeros(size);
         spk = DoubleMatrix.zeros(size);
@@ -86,9 +88,8 @@ public class LifNeuronGroup implements NeuronGroup {
         // Apply a ceiling to the input currents?
         gE.put(gE.gt(gEMax), gEMax);
         gI.put(gI.gt(gIMax), gIMax);
-        i.addi(gE).subi(gI);
-        // dv = -vDecay * (v - eL) + i
-        v.subi(vRest, dv).muli(-vDecay).addi(i);
+        v.subi(vRest, gL).muli(-vDecay);
+        gL.addi(gE, dv).subi(gI).addi(i);
         v.addi(dv);
     }
 
@@ -120,6 +121,11 @@ public class LifNeuronGroup implements NeuronGroup {
     @Override
     public DoubleMatrix getInhibitoryConductance() {
         return gI;
+    }
+    
+    @Override
+    public DoubleMatrix getLeakConductance() {
+        return gL;
     }
 
     @Override

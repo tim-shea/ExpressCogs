@@ -15,29 +15,25 @@ public class LocalFieldPotentialPlot {
     private final int frequency = 1000;
     private final double plotWidth = 1.0;
     
-    private TimeSeriesPlot plot = TimeSeriesPlot.line();
-    private NeuronGroup neurons;
+    private LocalFieldPotentialSensor sensor;
+    private TimeSeriesPlot plot;
     private BufferedDataSeries series;
-    private DoubleMatrix distanceToElectrode;
     private double[] filterWeights;
     private DoubleMatrix lfpFilter;
-    private DoubleMatrix lfpData = new DoubleMatrix(WINDOW_LENGTH);
-    private double lfp;
-    private double previousTrend = 0;
-    private double trend = 0;
-    private int detrendLength = 1000;
+    private DoubleMatrix lfpData;
     private int step = 0;
     private boolean enabled = true;
     
-    public LocalFieldPotentialPlot(NeuronGroup neurons) {
-        this.neurons = neurons;
+    public LocalFieldPotentialPlot(LocalFieldPotentialSensor sensor) {
+        this.sensor = sensor;
+        plot = TimeSeriesPlot.line();
         series = plot.addSeries("LFP");
         series.setMaxLength(0);
         plot.setAutoRanging(false, true);
-        setElectrodePosition(0.5, 0.5);
         filterWeights = BandPassFilter.sincFilter2(WINDOW_LENGTH, lowCutoff, highCutoff, frequency, BandPassFilter.filterType.BAND_PASS);
         filterWeights = BandPassFilter.createWindow(filterWeights, null, WINDOW_LENGTH, BandPassFilter.windowType.HANNING);
         lfpFilter = new DoubleMatrix(filterWeights);
+        lfpData = new DoubleMatrix(WINDOW_LENGTH);
     }
     
     public boolean isEnabled() {
@@ -48,14 +44,6 @@ public class LocalFieldPotentialPlot {
         enabled = value;
     }
     
-    private void setElectrodePosition(double x, double y) {
-        DoubleMatrix dx = neurons.getXPosition().sub(0.5);
-        dx.muli(dx);
-        DoubleMatrix dy = neurons.getYPosition().sub(0.5);
-        dy.muli(dy);
-        distanceToElectrode = MatrixFunctions.sqrt(dx.add(dy));
-    }
-    
     public XYChart<Number, Number> getChart() {
         return plot.getChart();
     }
@@ -64,21 +52,11 @@ public class LocalFieldPotentialPlot {
         if (!enabled) {
             return;
         }
-        DoubleMatrix c = neurons.getExcitatoryConductance().sub(neurons.getInhibitoryConductance());
-        lfp = c.divi(distanceToElectrode).sum();
         lfpData.put(new IntervalRange(0, WINDOW_LENGTH - 1), new PointRange(0),
                 lfpData.get(new IntervalRange(1, WINDOW_LENGTH), new PointRange(0)));
-        lfpData.put(WINDOW_LENGTH - 1, lfp);
+        lfpData.put(WINDOW_LENGTH - 1, sensor.getLfp());
         double filteredLfp = lfpData.dot(lfpFilter);
         plot.bufferPoint("LFP", t - (1.0 / frequency) * (WINDOW_LENGTH / 2), filteredLfp);
-        if (step == detrendLength) {
-            previousTrend = trend;
-            trend = 0;
-            step = 0;
-        } else {
-            trend += filteredLfp / detrendLength;
-            step++;
-        }
     }
     
     public void updatePlot(double t) {

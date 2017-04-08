@@ -5,7 +5,6 @@ import org.jblas.DoubleMatrix;
 import expresscogs.network.synapses.SynapseGroup;
 
 public interface NeuronGroup {
-
     String getName();
 
     void addDendriticSynapseGroup(SynapseGroup group);
@@ -25,11 +24,12 @@ public interface NeuronGroup {
     DoubleMatrix getExcitatoryConductance();
 
     DoubleMatrix getInhibitoryConductance();
-
+    
+    DoubleMatrix getLeakConductance();
+    
     DoubleMatrix getInputs();
 
     DoubleMatrix getPotentials();
 
     DoubleMatrix getSpikes();
-
 }

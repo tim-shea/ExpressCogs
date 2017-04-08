@@ -12,32 +12,25 @@ import expresscogs.network.synapses.SynapseGroupTopology;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.ScrollPane.ScrollBarPolicy;
 import javafx.scene.control.TitledPane;
-import javafx.scene.control.ToggleButton;
-import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.text.DecimalFormat;
-import java.text.NumberFormat;
-
 import org.jblas.DoubleMatrix;
+import org.jblas.ranges.IntervalRange;
+import org.jblas.ranges.PointRange;
+import org.jblas.util.Random;
+
 import expresscogs.utility.LocalFieldPotentialPlot;
+import expresscogs.utility.LocalFieldPotentialSensor;
 import expresscogs.utility.NeuralFieldPlot;
 import expresscogs.utility.SpikeRasterPlot;
-import expresscogs.utility.TimeSeriesPlot;
 import javafx.application.Application;
 import javafx.application.Platform;
-import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
 /**
@@ -79,11 +72,15 @@ public class SignalSelectionNetwork extends Application {
     private NeuronGroup gpe;
     private NeuronGroup st2;
     
+    // Sensors for recording from neurons
+    private LocalFieldPotentialSensor lfpSensor;
+    private DoubleMatrix spikeSample;
+    private DoubleMatrix record;
+    
     // Charts for visualization
     private SpikeRasterPlot rasterPlot;
     private NeuralFieldPlot fieldPlot;
     private LocalFieldPotentialPlot lfpPlot;
-    private DoubleMatrix record;
     
     @Override
     public void start(Stage stage) throws Exception {
@@ -125,24 +122,33 @@ public class SignalSelectionNetwork extends Application {
         SynapseGroup gpeGpi = SynapseFactory.connectWithDelay(gpe, gpi, narrow, 0.5 * weightScale);
         network.addSynapseGroups(ctxSt2, st2Gpe, stnGpe, gpeStn, gpeGpi);
         
-        record = new DoubleMatrix(tMax, 7);
+        // Create the sensors
+        lfpSensor = new LocalFieldPotentialSensor(stn);
+        spikeSample = DoubleMatrix.zeros(stn.getSize());
+        while (spikeSample.sum() < 25) {
+            spikeSample.put(Random.nextInt(stn.getSize()), 1);
+        }
+        record = new DoubleMatrix(tMax, 32);
+        
         simulation = new Simulation() {
             @Override
             public void updateModel() {
                 final double t = getTime();
                 network.update(getStep());
                 
-                rasterPlot.bufferSpikes(t);
-                fieldPlot.bufferNeuralField(t);
-                lfpPlot.bufferLfp(t);
-                
+                lfpSensor.update(t);
                 record.put(getStep(), 0, getTime());
                 record.put(getStep(), 1, thlInput.getNoise());
                 record.put(getStep(), 2, thlInput.getIntensity());
                 record.put(getStep(), 3, thl.getSpikes().sum());
                 record.put(getStep(), 4, ctx.getSpikes().sum());
                 record.put(getStep(), 5, stn.getSpikes().sum());
-                //record.put(getStep(), 6, lfpPlot.getLfp());
+                record.put(getStep(), 6, lfpSensor.getLfp());
+                record.put(new PointRange(getStep()), new IntervalRange(7, 32), stn.getSpikes().get(spikeSample).transpose());
+                
+                rasterPlot.bufferSpikes(t);
+                fieldPlot.bufferNeuralField(t);
+                lfpPlot.bufferLfp(t);
             }
             
             @Override
@@ -229,7 +235,7 @@ public class SignalSelectionNetwork extends Application {
         ResizingSeparator plotSeparator = new ResizingSeparator(fieldPlot.getChart(), Orientation.HORIZONTAL);
         plotContainer.getChildren().add(plotSeparator);
         
-        lfpPlot = new LocalFieldPotentialPlot(stn);
+        lfpPlot = new LocalFieldPotentialPlot(lfpSensor);
         TitledPane lfpPlotContainer = new TitledPane("Local Field Potential Plot", lfpPlot.getChart());
         lfpPlotContainer.setAnimated(false);
         lfpPlotContainer.expandedProperty().addListener((listener, oldValue, newValue) -> {

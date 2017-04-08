@@ -1,11 +1,16 @@
 .chart-series-line {
-	-fx-stroke-width: 1.75px;
+	-fx-stroke-width: 1.5px;
 }
 .chart-symbol {
 	-fx-shape: null;
 	-fx-padding: 1px;
 	-fx-background-color: black;
 	-fx-background-radius: 0px;
+}
+.chart-legend .chart-legend-item-symbol {
+	-fx-shape: "M 0 0 L 0 1 L 1 1 L 1 0 L 0 0 z";
+	-fx-padding: 5px;
+	-fx-background-color: black;
 }
 .chart-symbol-dot {
 	-fx-background-color: #000;

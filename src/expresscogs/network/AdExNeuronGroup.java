@@ -129,6 +129,11 @@ public class AdExNeuronGroup implements NeuronGroup {
     public DoubleMatrix getInhibitoryConductance() {
         return gI;
     }
+    
+    @Override
+    public DoubleMatrix getLeakConductance() {
+        return DoubleMatrix.zeros(size);
+    }
 
     @Override
     public DoubleMatrix getInputs() {

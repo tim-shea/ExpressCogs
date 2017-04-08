@@ -80,10 +80,19 @@ public class ContinuousStimulusGenerator implements InputGenerator {
     
     @Override
     public DoubleMatrix generate(NeuronGroup neurons) {
-        stimulus = MatrixFunctions.absi(neurons.getXPosition().sub(position)).subi(width).negi();
-        stimulus.put(stimulus.lt(0), 0);
-        stimulus.muli(1 / width).muli(stimulus).muli(intensity);
+        stimulus = gaussian(neurons.getXPosition(), position, width, intensity);
         stimulus.addi(noise);
+        DoubleMatrix edges = neurons.getXPosition().lt(0.05).or(neurons.getXPosition().gt(0.95));
+        stimulus.put(edges, stimulus.get(edges).mul(0.9));
         return DoubleMatrix.rand(neurons.getSize()).muli(stimulus);
+    }
+    
+    private DoubleMatrix gaussian(DoubleMatrix x, double center, double width, double height) {
+        double quarterWidthSqr = (0.25 * width * width);
+        DoubleMatrix shiftedX = x.sub(center);
+        shiftedX.muli(shiftedX).divi(-quarterWidthSqr);
+        MatrixFunctions.expi(shiftedX);
+        shiftedX.muli(height / shiftedX.max());
+        return shiftedX;
     }
 }
