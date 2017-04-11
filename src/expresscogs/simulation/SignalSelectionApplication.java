@@ -6,7 +6,7 @@ import expresscogs.gui.SimulationView;
 import expresscogs.gui.StimulusGeneratorTool;
 import expresscogs.gui.SynapseScalingTool;
 import expresscogs.network.Network;
-import expresscogs.network.NeuronGroup;
+import expresscogs.utility.BufferedPlot;
 import expresscogs.utility.LocalFieldPotentialPlot;
 import expresscogs.utility.NeuralFieldPlot;
 import expresscogs.utility.SignalSelectionPlot;
@@ -16,11 +16,11 @@ import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.scene.Scene;
-import javafx.scene.control.ComboBox;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TitledPane;
 import javafx.scene.control.ScrollPane.ScrollBarPolicy;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
@@ -31,7 +31,7 @@ public class SignalSelectionApplication extends Application implements Simulatio
     }
     
     private SignalSelectionNetwork simulation;
-    private int stepsBetweenVis = 20;
+    private int stepsBetweenView = 20;
     
     // Charts for visualization
     private SpikeRasterPlot rasterPlot;
@@ -55,7 +55,7 @@ public class SignalSelectionApplication extends Application implements Simulatio
         scene.getStylesheets().add("styles/plotstyles.css");
         stage.setScene(scene);
         
-        SimulationTool simulationTool = new SimulationTool(simulation);
+        SimulationTool simulationTool = new SimulationTool(simulation, this);
         StimulusGeneratorTool stimulusTool = new StimulusGeneratorTool(simulation.getInputGenerator());
         SynapseScalingTool synapseTool = new SynapseScalingTool(simulation.getNetwork(), 0, simulation.getWeightScale() * 2);
         
@@ -85,44 +85,16 @@ public class SignalSelectionApplication extends Application implements Simulatio
         hbox.getChildren().add(plotScrollPane);
         
         rasterPlot = new SpikeRasterPlot(simulation.getNetwork(), 100);
-        TitledPane rasterPlotContainer = new TitledPane("Spike Raster Plot", rasterPlot.getChart());
-        rasterPlotContainer.expandedProperty().addListener((listener, oldValue, newValue) -> {
-            rasterPlot.setEnabled(newValue);
-        });
-        rasterPlotContainer.setAnimated(false);
-        plotContainer.getChildren().add(rasterPlotContainer);
-        ResizingSeparator rasterSeparator = new ResizingSeparator(rasterPlot.getChart(), Orientation.HORIZONTAL);
-        plotContainer.getChildren().add(rasterSeparator);
-        VBox.setVgrow(rasterPlot.getChart(), Priority.ALWAYS);
+        addPlot(plotContainer, rasterPlot, "Spike Raster Plot", true);
         
         fieldPlot = new NeuralFieldPlot(simulation.getFieldSensor());
-        TitledPane fieldPlotContainer = new TitledPane("Neural Field Plot", fieldPlot.getChart());
-        fieldPlotContainer.setAnimated(false);
-        fieldPlotContainer.expandedProperty().addListener((listener, oldValue, newValue) -> {
-            fieldPlot.setEnabled(newValue);
-        });
-        plotContainer.getChildren().add(fieldPlotContainer);
-        VBox.setVgrow(fieldPlot.getChart(), Priority.ALWAYS);
-        ResizingSeparator plotSeparator = new ResizingSeparator(fieldPlot.getChart(), Orientation.HORIZONTAL);
-        plotContainer.getChildren().add(plotSeparator);
+        addPlot(plotContainer, fieldPlot, "Neural Field Plot", true);
         
         lfpPlot = new LocalFieldPotentialPlot(simulation.getLfpSensor());
-        TitledPane lfpPlotContainer = new TitledPane("Local Field Potential Plot", lfpPlot.getChart());
-        lfpPlotContainer.setAnimated(false);
-        lfpPlotContainer.expandedProperty().addListener((listener, oldValue, newValue) -> {
-            lfpPlot.setEnabled(newValue);
-        });
-        plotContainer.getChildren().add(lfpPlotContainer);
-        VBox.setVgrow(lfpPlot.getChart(), Priority.ALWAYS);
+        addPlot(plotContainer, lfpPlot, "Local Field Potential Plot", true);
         
-        signalPlot = new SignalSelectionPlot(simulation.getFieldSensor());
-        TitledPane signalPlotContainer = new TitledPane("Signal Selection Plot", signalPlot.getChart());
-        signalPlotContainer.setAnimated(false);
-        signalPlotContainer.expandedProperty().addListener((listener, oldValue, newValue) -> {
-            signalPlot.setEnabled(newValue);
-        });
-        plotContainer.getChildren().add(signalPlotContainer);
-        VBox.setVgrow(signalPlot.getChart(), Priority.ALWAYS);
+        signalPlot = new SignalSelectionPlot(simulation.getSignalSensor());
+        addPlot(plotContainer, signalPlot, "Signal Selection Plot", false);
         
         stage.setOnCloseRequest(event -> {
             simulation.stop();
@@ -132,20 +104,43 @@ public class SignalSelectionApplication extends Application implements Simulatio
         stage.show();
     }
     
+    private void addPlot(Pane container, BufferedPlot plot, String title, boolean resizable) {
+        TitledPane titlePane = new TitledPane(title, plot.getChart());
+        titlePane.expandedProperty().addListener((listener, oldValue, newValue) -> {
+            plot.setEnabled(newValue);
+        });
+        titlePane.setAnimated(false);
+        titlePane.setExpanded(false);
+        container.getChildren().add(titlePane);
+        if (resizable) {
+            ResizingSeparator separator = new ResizingSeparator(plot.getChart(), Orientation.HORIZONTAL);
+            container.getChildren().add(separator);
+        }
+        VBox.setVgrow(plot.getChart(), Priority.ALWAYS);
+    }
+    
+    public int getStepsBetweenView() {
+        return stepsBetweenView;
+    }
+    
+    public void setStepsBetweenView(int value) {
+        stepsBetweenView = value;
+    }
+    
     @Override
     public void update() {
         updateBuffers();
-        if (simulation.getStep() % stepsBetweenVis == 0) {
+        if (simulation.getStep() % stepsBetweenView == 0) {
             updatePlots();
         }
     }
     
     private void updateBuffers() {
         final double t = simulation.getTime();
-        rasterPlot.bufferSpikes(t);
-        fieldPlot.bufferNeuralField(t);
-        lfpPlot.bufferLfp(t);
-        signalPlot.bufferSignal(t);
+        rasterPlot.updateBuffers(t);
+        fieldPlot.updateBuffers(t);
+        lfpPlot.updateBuffers(t);
+        signalPlot.updateBuffers(t);
     }
     
     private void updatePlots() {

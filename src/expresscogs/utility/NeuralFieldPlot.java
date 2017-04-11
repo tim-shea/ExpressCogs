@@ -1,40 +1,24 @@
 package expresscogs.utility;
 
-import javafx.scene.chart.XYChart;
-
-public class NeuralFieldPlot {
+public class NeuralFieldPlot extends BufferedPlot {
     private NeuralFieldSensor sensor;
-    private TimeSeriesPlot plot = TimeSeriesPlot.line();
     private BufferedDataSeries series;
-    private boolean enabled = true;
     
     public NeuralFieldPlot(NeuralFieldSensor sensor) {
+        createLine();
         this.sensor = sensor;
-        series = plot.addSeries("Neural Field");
+        series = addSeries("Neural Field");
         series.setMaxLength(sensor.getPosition().length);
-        plot.setAutoRanging(false, true);
-        plot.setXLimits(0, 1);
+        setAutoRanging(false, true);
+        setXLimits(0, 1);
     }
     
-    public boolean isEnabled() {
-        return enabled;
-    }
-    
-    public void setEnabled(boolean value) {
-        enabled = value;
-    }
-    
-    public XYChart<Number, Number> getChart() {
-        return plot.getChart();
-    }
-    
-    public void bufferNeuralField(double t) {}
-    
+    @Override
     public void updatePlot(double t) {
-        if (!enabled) {
+        if (!isEnabled()) {
             return;
         }
-        plot.bufferPoints("Neural Field", sensor.getPosition().data, sensor.getActivity().data);
-        plot.addPoints();
+        series.bufferPoints(sensor.getPosition().data, sensor.getActivity().data);
+        series.addBuffered();
     }
 }

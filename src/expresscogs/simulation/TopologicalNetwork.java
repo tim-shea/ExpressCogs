@@ -111,7 +111,7 @@ public class TopologicalNetwork extends Application {
     
     private void bufferSpikes(BufferedDataSeries series, DoubleMatrix x, double t) {
         for (int i = 0; i < x.length; ++i) {
-            series.bufferData(t, x.get(i));
+            series.bufferPoint(t, x.get(i));
         }
     }
 }

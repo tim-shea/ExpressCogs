@@ -8,7 +8,7 @@ import org.jblas.ranges.PointRange;
 import expresscogs.network.NeuronGroup;
 import javafx.scene.chart.XYChart;
 
-public class LocalFieldPotentialPlot {
+public class LocalFieldPotentialPlot extends BufferedPlot {
     private final int WINDOW_LENGTH = 27;
     private final double lowCutoff = 0.5;
     private final double highCutoff = 60;
@@ -16,55 +16,43 @@ public class LocalFieldPotentialPlot {
     private final double plotWidth = 1.0;
     
     private LocalFieldPotentialSensor sensor;
-    private TimeSeriesPlot plot;
     private BufferedDataSeries series;
     private double[] filterWeights;
     private DoubleMatrix lfpFilter;
     private DoubleMatrix lfpData;
     private int step = 0;
-    private boolean enabled = true;
     
     public LocalFieldPotentialPlot(LocalFieldPotentialSensor sensor) {
+        createLine();
         this.sensor = sensor;
-        plot = TimeSeriesPlot.line();
-        series = plot.addSeries("LFP");
+        series = addSeries("LFP");
         series.setMaxLength(0);
-        plot.setAutoRanging(false, true);
+        setAutoRanging(false, true);
         filterWeights = BandPassFilter.sincFilter2(WINDOW_LENGTH, lowCutoff, highCutoff, frequency, BandPassFilter.filterType.BAND_PASS);
         filterWeights = BandPassFilter.createWindow(filterWeights, null, WINDOW_LENGTH, BandPassFilter.windowType.HANNING);
         lfpFilter = new DoubleMatrix(filterWeights);
         lfpData = new DoubleMatrix(WINDOW_LENGTH);
     }
     
-    public boolean isEnabled() {
-        return enabled;
-    }
-    
-    public void setEnabled(boolean value) {
-        enabled = value;
-    }
-    
-    public XYChart<Number, Number> getChart() {
-        return plot.getChart();
-    }
-    
-    public void bufferLfp(double t) {
-        if (!enabled) {
+    @Override
+    public void updateBuffers(double t) {
+        if (!isEnabled()) {
             return;
         }
         lfpData.put(new IntervalRange(0, WINDOW_LENGTH - 1), new PointRange(0),
                 lfpData.get(new IntervalRange(1, WINDOW_LENGTH), new PointRange(0)));
         lfpData.put(WINDOW_LENGTH - 1, sensor.getLfp());
         double filteredLfp = lfpData.dot(lfpFilter);
-        plot.bufferPoint("LFP", t - (1.0 / frequency) * (WINDOW_LENGTH / 2), filteredLfp);
+        series.bufferPoint(t - (1.0 / frequency) * (WINDOW_LENGTH / 2), filteredLfp);
     }
     
+    @Override
     public void updatePlot(double t) {
-        if (!enabled) {
+        if (!isEnabled()) {
             return;
         }
         series.setMinXValue(t - plotWidth);
-        plot.addPoints();
-        plot.setXLimits(t - plotWidth, t);
+        series.addBuffered();
+        setXLimits(t - plotWidth, t);
     }
 }

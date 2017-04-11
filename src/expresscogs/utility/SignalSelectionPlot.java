@@ -1,53 +1,40 @@
 package expresscogs.utility;
 
-import javafx.scene.chart.XYChart;
-
-public class SignalSelectionPlot {
+public class SignalSelectionPlot extends BufferedPlot {
     private final double plotWidth = 1.0;
     
-    private NeuralFieldSensor sensor;
-    private TimeSeriesPlot plot;
+    private SignalDetectionSensor signalSensor;
     private BufferedDataSeries signalSeries;
-    private BufferedDataSeries strengthSeries;
-    private boolean enabled = true;
+    private BufferedDataSeries noiseSeries;
     
-    public SignalSelectionPlot(NeuralFieldSensor sensor) {
-        this.sensor = sensor;
-        plot = TimeSeriesPlot.line();
-        signalSeries = plot.addSeries("Signal");
+    public SignalSelectionPlot(SignalDetectionSensor signalSensor) {
+        createLine();
+        this.signalSensor = signalSensor;
+        signalSeries = addSeries("Signal");
         signalSeries.setMaxLength(0);
-        strengthSeries = plot.addSeries("Strength");
-        strengthSeries.setMaxLength(0);
-        plot.setAutoRanging(false, true);
+        noiseSeries = addSeries("Noise");
+        noiseSeries.setMaxLength(0);
+        setAutoRanging(false, true);
     }
     
-    public boolean isEnabled() {
-        return enabled;
-    }
-    
-    public void setEnabled(boolean value) {
-        enabled = value;
-    }
-    
-    public XYChart<Number, Number> getChart() {
-        return plot.getChart();
-    }
-    
-    public void bufferSignal(double t) {
-        if (!enabled) {
+    @Override
+    public void updateBuffers(double t) {
+        if (!isEnabled()) {
             return;
         }
-        plot.bufferPoint("Signal", t, sensor.getSignalCenter());
-        plot.bufferPoint("Strength", t, sensor.getSignalStrength());
+        signalSeries.bufferPoint(t, signalSensor.getSignalStrength());
+        noiseSeries.bufferPoint(t, signalSensor.getNoiseStrength());
     }
     
+    @Override
     public void updatePlot(double t) {
-        if (!enabled) {
+        if (!isEnabled()) {
             return;
         }
         signalSeries.setMinXValue(t - plotWidth);
-        strengthSeries.setMinXValue(t - plotWidth);
-        plot.addPoints();
-        plot.setXLimits(t - plotWidth, t);
+        noiseSeries.setMinXValue(t - plotWidth);
+        signalSeries.addBuffered();
+        noiseSeries.addBuffered();
+        setXLimits(t - plotWidth, t);
     }
 }

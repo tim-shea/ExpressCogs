@@ -14,6 +14,7 @@ import org.jblas.util.Random;
 
 import expresscogs.utility.LocalFieldPotentialSensor;
 import expresscogs.utility.NeuralFieldSensor;
+import expresscogs.utility.SignalDetectionSensor;
 
 /**
  * SignalSelectionNetwork is a simulation which instantiates a topological
@@ -50,6 +51,7 @@ public class SignalSelectionNetwork extends Simulation {
     private LocalFieldPotentialSensor lfpSensor;
     private DoubleMatrix spikeSample;
     private NeuralFieldSensor fieldSensor;
+    private SignalDetectionSensor signalSensor;
     private DoubleMatrix record;
     
     public SignalSelectionNetwork(SimulationView view) {
@@ -91,17 +93,18 @@ public class SignalSelectionNetwork extends Simulation {
             spikeSample.put(Random.nextInt(stn.getSize()), 1);
         }
         fieldSensor = new NeuralFieldSensor(ctx);
+        signalSensor = new SignalDetectionSensor(ctx, thlInput);
     }
     
     @Override
     public void runInThread(int timesteps) {
-        record = new DoubleMatrix(timesteps, 36);
+        record = new DoubleMatrix(timesteps, 38);
         super.runInThread(timesteps);
     }
     
     @Override
     public void runAsync(int timesteps) {
-        record = new DoubleMatrix(timesteps, 36);
+        record = new DoubleMatrix(timesteps, 38);
         super.runAsync(timesteps);
     }
     
@@ -112,6 +115,7 @@ public class SignalSelectionNetwork extends Simulation {
         
         lfpSensor.update(t);
         fieldSensor.update(t);
+        signalSensor.update(t);
         record.put(getStep(), 0, getTime());
         record.put(getStep(), 1, thlInput.getSignalToNoiseRatio());
         record.put(getStep(), 2, thlInput.getPosition());
@@ -123,7 +127,9 @@ public class SignalSelectionNetwork extends Simulation {
         record.put(getStep(), 8, gpi.getSpikes().sum());
         record.put(getStep(), 9, gpe.getSpikes().sum());
         record.put(getStep(), 10, lfpSensor.getLfp());
-        record.put(new PointRange(getStep()), new IntervalRange(11, 36), stn.getSpikes().get(spikeSample).transpose());
+        record.put(getStep(), 11, signalSensor.getSignalStrength());
+        record.put(getStep(), 12, signalSensor.getNoiseStrength());
+        record.put(new PointRange(getStep()), new IntervalRange(13, 38), stn.getSpikes().get(spikeSample).transpose());
     }
     
     public Network getNetwork() {
@@ -134,16 +140,20 @@ public class SignalSelectionNetwork extends Simulation {
         return thlInput;
     }
     
-    public LocalFieldPotentialSensor getLfpSensor() {
-        return lfpSensor;
-    }
-    
     public double getWeightScale() {
         return weightScale;
     }
     
+    public LocalFieldPotentialSensor getLfpSensor() {
+        return lfpSensor;
+    }
+    
     public NeuralFieldSensor getFieldSensor() {
         return fieldSensor;
+    }
+    
+    public SignalDetectionSensor getSignalSensor() {
+        return signalSensor;
     }
     
     public DoubleMatrix getRecord() {

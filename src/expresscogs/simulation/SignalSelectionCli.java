@@ -21,13 +21,20 @@ public class SignalSelectionCli implements SimulationView {
     private static String name;
     
     public static void main(String[] args) throws InterruptedException {
-        name = args.length > 1 ? args[1] : "sim";
-        ExecutorService executor = Executors.newFixedThreadPool(2);
+        if (args.length == 0) {
+            System.out.println("Usage: java -jar ExpressCogs.jar <batch-name> <num-sims> <num-timesteps> <num-threads>");
+            return;
+        }
+        name = args[0];
+        int sims = args.length > 1 ? Integer.parseInt(args[1]) : 2;
+        int steps = args.length > 2 ? Integer.parseInt(args[2]) : 600000;
+        int threads = args.length > 3 ? Integer.parseInt(args[3]) : 2;
+        ExecutorService executor = Executors.newFixedThreadPool(threads);
         List<Callable<Void>> runs = new LinkedList<Callable<Void>>();
-        for (int i = 0; i < 2; ++i) {
+        for (int i = 0; i < sims; ++i) {
             final String id = name + i;
             runs.add(() -> {
-                SignalSelectionCli cli = new SignalSelectionCli(id);
+                SignalSelectionCli cli = new SignalSelectionCli(id, steps);
                 cli.run();
                 cli.saveToCsv();
                 return null;
@@ -40,14 +47,23 @@ public class SignalSelectionCli implements SimulationView {
     
     private SignalSelectionNetwork simulation;
     private String id;
-    private int stepsBetweenUpdate = 1000;
+    private int stepsBetweenView = 1000;
     private int timesteps = 10000;
     private long startTime;
     
-    public SignalSelectionCli(String id) {
+    public SignalSelectionCli(String id, int timesteps) {
         this.id = id;
-        System.out.println("Start: " + id);
+        this.timesteps = timesteps;
+        System.out.println("Start: " + id + " for " + (timesteps / 1000.0) + "s");
         simulation = new SignalSelectionNetwork(this);
+    }
+    
+    public int getStepsBetweenView() {
+        return stepsBetweenView;
+    }
+    
+    public void setStepsBetweenView(int value) {
+        stepsBetweenView = value;
     }
     
     public void run() {
@@ -61,7 +77,7 @@ public class SignalSelectionCli implements SimulationView {
     
     @Override
     public void update() {
-        if (simulation.getStep() % stepsBetweenUpdate == 0 || simulation.getStep() == timesteps - 1) {
+        if (simulation.getStep() % stepsBetweenView == 0 || simulation.getStep() == timesteps - 1) {
             System.out.println("Update: " + id + " at " + simulation.getTime() + "s in " + getElapsedTime() + "s");
         }
     }
@@ -77,7 +93,7 @@ public class SignalSelectionCli implements SimulationView {
         try {
             DoubleMatrix record = simulation.getRecord();
             BufferedWriter writer = new BufferedWriter(new FileWriter(file));
-            writer.write("t,snr,pos,thl,ctx,str,st2,stn,gpi,gpe,lfp");
+            writer.write("t,snr,pos,thl,ctx,str,st2,stn,gpi,gpe,lfp,sig,nos");
             for (int i = 0; i < 25; ++i) {
                 writer.write(",n" + i);
             }

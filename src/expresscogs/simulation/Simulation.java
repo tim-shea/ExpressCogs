@@ -16,6 +16,8 @@ public abstract class Simulation {
     private int step = 0;
     // Asynchronous simulation thread
     private Thread thread;
+    // Slow execution by inserting an additional sleep
+    private boolean slow = false;
     
     public Simulation(SimulationView view) {
         this.view = view;
@@ -44,6 +46,9 @@ public abstract class Simulation {
                         System.exit(1);
                     }
                     try {
+                        if (slow) {
+                            Thread.sleep(5);
+                        }
                         while (waitForSync && run) {
                             Thread.sleep(5);
                         }
@@ -81,6 +86,14 @@ public abstract class Simulation {
     public double getTime() {
         return step * dt;
     }
-
+    
+    public boolean isSlow() {
+        return slow;
+    }
+    
+    public void setSlow(boolean value) {
+        slow = value;
+    }
+    
     public abstract void updateModel();
 }

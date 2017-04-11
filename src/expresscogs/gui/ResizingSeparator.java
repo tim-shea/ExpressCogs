@@ -4,7 +4,10 @@ import javafx.geometry.Orientation;
 import javafx.scene.Cursor;
 import javafx.scene.control.Separator;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
 import javafx.scene.layout.Region;
+import javafx.scene.layout.VBox;
 
 public class ResizingSeparator extends Separator {
     private Region region;

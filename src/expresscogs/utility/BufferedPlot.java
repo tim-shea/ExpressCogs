@@ -1,84 +1,45 @@
 package expresscogs.utility;
 
-import java.util.HashMap;
 import javafx.scene.chart.LineChart;
 import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.ScatterChart;
 import javafx.scene.chart.XYChart;
 
-public class TimeSeriesPlot {
-    public static TimeSeriesPlot scatter() {
-        TimeSeriesPlot plot = new TimeSeriesPlot();
-        plot.createScatter();
-        return plot;
-    }
-    
-    public static TimeSeriesPlot line() {
-        TimeSeriesPlot plot = new TimeSeriesPlot();
-        plot.createLine();
-        return plot;
-    }
-    
+public class BufferedPlot {
     private NumberAxis xAxis;
     private NumberAxis yAxis;
     private XYChart<Number, Number> chart;
-    private HashMap<String, BufferedDataSeries> data;
+    private boolean enabled = true;
     
-    private TimeSeriesPlot() {
+    protected BufferedPlot() {
         xAxis = new NumberAxis();
         yAxis = new NumberAxis();
         xAxis.setAutoRanging(false);
         xAxis.setMinorTickVisible(false);
         yAxis.setAutoRanging(false);
         yAxis.setMinorTickVisible(false);
-        data = new HashMap<String, BufferedDataSeries>();
     }
     
     public XYChart<Number, Number> getChart() {
         return chart;
     }
     
-    private void createScatter() {
+    protected void createScatter() {
         chart = new ScatterChart<Number, Number>(xAxis, yAxis);
         chart.setAnimated(false);
     }
     
-    private void createLine() {
+    protected void createLine() {
         chart = new LineChart<Number, Number>(xAxis, yAxis);
         chart.setAnimated(false);
     }
     
     public BufferedDataSeries addSeries(String label) {
-        BufferedDataSeries buffer = new BufferedDataSeries(label);
-        chart.getData().add(buffer.getSeries());
-        data.put(label, buffer);
-        return buffer;
+        BufferedDataSeries series = new BufferedDataSeries(label);
+        chart.getData().add(series.getSeries());
+        return series;
     }
     
-    public void bufferPoint(String seriesLabel, double x, double y) {
-        data.get(seriesLabel).bufferPoint(x, y);
-    }
-    
-    public void bufferPoints(String seriesLabel, double x, double[] ys) {
-        BufferedDataSeries series = data.get(seriesLabel); 
-        for (double y : ys) {
-            series.bufferPoint(x, y);
-        }
-    }
-    
-    public void bufferPoints(String seriesLabel, double[] xs, double[] ys) {
-        BufferedDataSeries series = data.get(seriesLabel);
-        for (int i = 0; i < xs.length; ++i) {
-            series.bufferPoint(xs[i], ys[i]);
-        }
-    }
-    
-    public void addPoints() {
-        for (BufferedDataSeries series : data.values()) {
-            series.addBuffered();
-        }
-    }
-
     public void setLimits(double xLower, double xUpper, double yLower, double yUpper) {
         setXLimits(xLower, xUpper);
         setYLimits(yLower, yUpper);
@@ -100,4 +61,16 @@ public class TimeSeriesPlot {
         xAxis.setAutoRanging(xAuto);
         yAxis.setAutoRanging(yAuto);
     }
+    
+    public boolean isEnabled() {
+        return enabled;
+    }
+    
+    public void setEnabled(boolean value) {
+        enabled = value;
+    }
+    
+    public void updateBuffers(double t) {}
+    
+    public void updatePlot(double t) {}
 }

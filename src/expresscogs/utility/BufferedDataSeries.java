@@ -39,8 +39,20 @@ public class BufferedDataSeries {
         return series;
     }
     
-    public void bufferData(double x, double y) {
+    public void bufferPoint(double x, double y) {
         buffer.add(new Data<Number,Number>(x, y));
+    }
+    
+    public void bufferPoints(double x, double[] ys) {
+        for (double y : ys) {
+            bufferPoint(x, y);
+        }
+    }
+    
+    public void bufferPoints(double[] xs, double[] ys) {
+        for (int i = 0; i < xs.length; ++i) {
+            bufferPoint(xs[i], ys[i]);
+        }
     }
     
     public void addBuffered() {
