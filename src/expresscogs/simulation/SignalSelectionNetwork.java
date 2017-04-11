@@ -14,7 +14,6 @@ import org.jblas.util.Random;
 
 import expresscogs.utility.LocalFieldPotentialSensor;
 import expresscogs.utility.NeuralFieldSensor;
-import expresscogs.utility.SignalSelectionSensor;
 
 /**
  * SignalSelectionNetwork is a simulation which instantiates a topological
@@ -51,7 +50,6 @@ public class SignalSelectionNetwork extends Simulation {
     private LocalFieldPotentialSensor lfpSensor;
     private DoubleMatrix spikeSample;
     private NeuralFieldSensor fieldSensor;
-    private SignalSelectionSensor signalSensor;
     private DoubleMatrix record;
     
     public SignalSelectionNetwork(SimulationView view) {
@@ -93,7 +91,6 @@ public class SignalSelectionNetwork extends Simulation {
             spikeSample.put(Random.nextInt(stn.getSize()), 1);
         }
         fieldSensor = new NeuralFieldSensor(ctx);
-        signalSensor = new SignalSelectionSensor(ctx);
     }
     
     @Override
@@ -115,7 +112,6 @@ public class SignalSelectionNetwork extends Simulation {
         
         lfpSensor.update(t);
         fieldSensor.update(t);
-        signalSensor.update(t);
         record.put(getStep(), 0, getTime());
         record.put(getStep(), 1, thlInput.getSignalToNoiseRatio());
         record.put(getStep(), 2, thlInput.getPosition());
@@ -148,10 +144,6 @@ public class SignalSelectionNetwork extends Simulation {
     
     public NeuralFieldSensor getFieldSensor() {
         return fieldSensor;
-    }
-    
-    public SignalSelectionSensor getSignalSensor() {
-        return signalSensor;
     }
     
     public DoubleMatrix getRecord() {
