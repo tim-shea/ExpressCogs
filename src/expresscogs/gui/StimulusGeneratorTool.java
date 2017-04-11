@@ -5,6 +5,7 @@ import expresscogs.utility.ViewUtility;
 import javafx.geometry.Insets;
 import javafx.scene.control.Slider;
 import javafx.scene.control.TitledPane;
+import javafx.scene.control.ToggleButton;
 import javafx.scene.layout.VBox;
 
 public class StimulusGeneratorTool extends TitledPane {
@@ -33,8 +34,18 @@ public class StimulusGeneratorTool extends TitledPane {
         ViewUtility.createSlider(controls, "Width", generator.getWidth(), 0.01, 0.25, (observable, oldValue, newValue) -> {
             generator.setWidth(newValue.doubleValue());
         });
-        ViewUtility.createSlider(controls, "Position", generator.getPosition(), 0.05, 0.95, (observable, oldValue, newValue) -> {
+        Slider posSlider = ViewUtility.createSlider(controls, "Position", generator.getPosition(), 0.05, 0.95, (observable, oldValue, newValue) -> {
             generator.setPosition(newValue.doubleValue());
         });
+        ToggleButton randomizeButton = new ToggleButton("Randomize");
+        randomizeButton.setOnAction(event -> {
+            generator.setRandomize(randomizeButton.isSelected());
+            snrSlider.setDisable(randomizeButton.isSelected());
+            posSlider.setDisable(randomizeButton.isSelected());
+        });
+        randomizeButton.setSelected(generator.getRandomize());
+        snrSlider.setDisable(generator.getRandomize());
+        posSlider.setDisable(generator.getRandomize());
+        controls.getChildren().add(randomizeButton);
     }
 }

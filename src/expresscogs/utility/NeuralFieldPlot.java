@@ -1,23 +1,19 @@
 package expresscogs.utility;
 
-import org.jblas.DoubleMatrix;
-import expresscogs.network.NeuronGroup;
 import javafx.scene.chart.XYChart;
 
 public class NeuralFieldPlot {
-    private static final double decay = 0.96;
-    
+    private NeuralFieldSensor sensor;
     private TimeSeriesPlot plot = TimeSeriesPlot.line();
-    private NeuronGroup neurons;
-    private DoubleMatrix field;
     private BufferedDataSeries series;
     private boolean enabled = true;
     
-    public NeuralFieldPlot() {
+    public NeuralFieldPlot(NeuralFieldSensor sensor) {
+        this.sensor = sensor;
         series = plot.addSeries("Neural Field");
-        plot.setAutoRanging(false, false);
+        series.setMaxLength(sensor.getPosition().length);
+        plot.setAutoRanging(false, true);
         plot.setXLimits(0, 1);
-        plot.setYLimits(0, 100);
     }
     
     public boolean isEnabled() {
@@ -28,34 +24,17 @@ public class NeuralFieldPlot {
         enabled = value;
     }
     
-    public void setNeuronGroup(NeuronGroup neurons) {
-        this.neurons = neurons;
-        field = DoubleMatrix.zeros(neurons.getSize());
-        series.setMaxLength(neurons.getSize());
-    }
-    
     public XYChart<Number, Number> getChart() {
         return plot.getChart();
     }
     
-    public void bufferNeuralField(double t) {
-        if (!enabled) {
-            return;
-        }
-        if (neurons != null) {
-            field.addi(neurons.getSpikes());
-            //field.muli(0.999);
-        }
-    }
+    public void bufferNeuralField(double t) {}
     
     public void updatePlot(double t) {
         if (!enabled) {
             return;
         }
-        if (neurons != null) {
-            field.muli(decay);
-            plot.bufferPoints("Neural Field", neurons.getXPosition().data, field.mul(2).data);
-            plot.addPoints();
-        }
+        plot.bufferPoints("Neural Field", sensor.getPosition().data, sensor.getActivity().data);
+        plot.addPoints();
     }
 }

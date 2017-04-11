@@ -11,9 +11,31 @@ import java.util.concurrent.TimeUnit;
 import expresscogs.network.synapses.SynapseGroup;
 
 public class Network {
+    public static void setUpdateThreads(int numThreads) {
+        if (numThreads < 2) {
+            shutdownUpdater();
+        } else {
+            executor = Executors.newFixedThreadPool(numThreads);
+        }
+    }
+    
+    public static void shutdownUpdater() {
+        if (executor == null) {
+            return;
+        }
+        executor.shutdown();
+        try {
+            executor.awaitTermination(1, TimeUnit.SECONDS);
+            executor = null;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    private static ExecutorService executor;
+    
     private List<NeuronGroup> neuronGroups = new ArrayList<NeuronGroup>();
     private List<SynapseGroup> synapseGroups = new ArrayList<SynapseGroup>();
-    private ExecutorService executor = Executors.newFixedThreadPool(4);
     private List<Callable<Void>> neuronGroupUpdaters = new LinkedList<Callable<Void>>();
     private List<Callable<Void>> synapseGroupUpdaters = new LinkedList<Callable<Void>>();
     private int step; 
@@ -61,7 +83,11 @@ public class Network {
     
     public void update(int step) {
         this.step = step;
-        parallelUpdate();
+        if (executor == null) {
+            serialUpdate();
+        } else {
+            parallelUpdate();
+        }
     }
     
     public void parallelUpdate() {
@@ -79,15 +105,6 @@ public class Network {
         }
         for (SynapseGroup synapses : synapseGroups) {
             synapses.update(step);
-        }
-    }
-    
-    public void shutdown() {
-        executor.shutdown();
-        try {
-            executor.awaitTermination(1, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
         }
     }
 }

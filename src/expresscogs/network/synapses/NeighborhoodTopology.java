@@ -8,9 +8,7 @@ import expresscogs.network.NeuronGroup;
 /**
  * NeighborhoodTopology generates SynapseGroup connections based on a normal probability
  * density function of x distance. Approximately two thirds of a given neuron's synapses
- * will be made with neurons that are less than a distance of neighborhood away. 
- * 
- * @author Tim
+ * will be made with neurons that are less than a distance of neighborhood away.
  */
 public class NeighborhoodTopology implements SynapseGroupTopology {
     private static DoubleMatrix normalPdf(DoubleMatrix x, double mean, double std) {

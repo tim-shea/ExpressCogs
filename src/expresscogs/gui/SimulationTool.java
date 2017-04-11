@@ -80,9 +80,10 @@ public class SimulationTool extends TitledPane {
         
         buttonBar.getChildren().addAll(runButton, saveButton);
         
+        /*
         TextField updateVisField = new TextField();
         NumberFormat format = NumberFormat.getIntegerInstance();
-        updateVisField.setText(format.format(simulation.getStepsBetweenVisualizationUpdate()));
+        updateVisField.setText(format.format(0));
         updateVisField.textProperty().addListener((listener, oldValue, newValue) -> {
             try {
                 int value = format.parse(newValue).intValue();
@@ -93,5 +94,6 @@ public class SimulationTool extends TitledPane {
             }
         });
         controls.getChildren().add(updateVisField);
+        */
     }
 }

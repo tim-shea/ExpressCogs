@@ -1,8 +1,11 @@
 package expresscogs.simulation;
 
+import expresscogs.gui.SimulationView;
 import javafx.concurrent.Task;
 
 public abstract class Simulation {
+    // The current view of this simulation
+    private SimulationView view;
     // Flag for synchronizing a running simulation with the calling thread
     private boolean waitForSync = false;
     // Flag for a running simulation
@@ -11,15 +14,18 @@ public abstract class Simulation {
     private double dt = 0.001;
     // Current simulation timestep
     private int step = 0;
-    // Number of model updates between visualization updates
-    private int stepsBetweenVis = 20;
     // Asynchronous simulation thread
     private Thread thread;
+    
+    public Simulation(SimulationView view) {
+        this.view = view;
+    }
     
     public void runInThread(int timesteps) {
         run = true;
         while (step < timesteps && run) {
             updateModel();
+            view.update();
             ++step;
         }
     }
@@ -32,9 +38,7 @@ public abstract class Simulation {
                 while (step < timesteps && run) {
                     try {
                         updateModel();
-                        if (step % stepsBetweenVis == 0 || step == timesteps - 1) {
-                            updateVisualization();
-                        }
+                        view.update();
                     } catch (Exception e) {
                         e.printStackTrace();
                         System.exit(1);
@@ -70,10 +74,6 @@ public abstract class Simulation {
         waitForSync = !waitForSync;
     }
     
-    public abstract void updateModel();
-    
-    public void updateVisualization() {}
-    
     public int getStep() {
         return step;
     }
@@ -81,12 +81,6 @@ public abstract class Simulation {
     public double getTime() {
         return step * dt;
     }
-    
-    public int getStepsBetweenVisualizationUpdate() {
-        return stepsBetweenVis;
-    }
-    
-    public void setStepsBetweenVisualizationUpdate(int value) {
-        stepsBetweenVis = value;
-    }
+
+    public abstract void updateModel();
 }
