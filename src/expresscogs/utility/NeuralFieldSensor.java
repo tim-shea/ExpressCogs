@@ -16,7 +16,7 @@ public class NeuralFieldSensor {
     private DoubleMatrix spikes;
     private DoubleMatrix field;
     private double frequency = 1000;
-    private int window = 100;
+    private int window = 1000;
     private int bins = 100;
     private double binWidth = (1.0 / bins);
     private int step;
@@ -65,7 +65,7 @@ public class NeuralFieldSensor {
     /** Update the sensor by reading the current spikes from the neuron group and sorting them into bins. */
     public void update(double t) {
         spikes.putColumn(step % window, spikes.getColumn(step % window).fill(0));
-        DoubleMatrix indices = MatrixFunctions.floori(neurons.getXPosition().mul(bins - 1));
+        DoubleMatrix indices = MatrixFunctions.floori(neurons.getXPosition().add(binWidth / 2).mul(bins - 1));
         for (int n : neurons.getSpikes().findIndices()) {
             spikes.put((int)indices.get(n), step % window, spikes.get(step % window) + 1);
         }

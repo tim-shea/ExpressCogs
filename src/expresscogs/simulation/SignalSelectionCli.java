@@ -18,23 +18,48 @@ import expresscogs.gui.SimulationView;
 import expresscogs.network.Network;
 
 public class SignalSelectionCli implements SimulationView {
+    public enum Variant {
+        FULL_MODEL,
+        CUT_GPI_THL,
+        CUT_STR_GPI,
+        DIRECT_ONLY;
+        
+        public static void apply(SignalSelectionNetwork simulation, Variant variant) {
+            switch (variant) {
+            case FULL_MODEL:
+                break;
+            case CUT_GPI_THL:
+                simulation.getNetwork().getSynapseGroup("GPI_THL").setWeightScale(0);
+                break;
+            case CUT_STR_GPI:
+                simulation.getNetwork().getSynapseGroup("STR_GPI").setWeightScale(0);
+                break;
+            case DIRECT_ONLY:
+                simulation.getNetwork().getSynapseGroup("CTX_ST2").setWeightScale(0);
+                simulation.getNetwork().getSynapseGroup("ST2_GPE").setWeightScale(0);
+                simulation.getNetwork().getSynapseGroup("STN_GPE").setWeightScale(0);
+                simulation.getNetwork().getSynapseGroup("GPE_STN").setWeightScale(0);
+                simulation.getNetwork().getSynapseGroup("GPE_GPI").setWeightScale(0);
+                break;
+            }
+        }
+    }
+    
     private static String name;
     
     public static void main(String[] args) throws InterruptedException {
-        if (args.length == 0) {
-            System.out.println("Usage: java -jar ExpressCogs.jar <batch-name> <num-sims> <num-timesteps> <num-threads>");
-            return;
-        }
-        name = args[0];
+        name = args.length > 0 ? args[0] : "sim";
         int sims = args.length > 1 ? Integer.parseInt(args[1]) : 2;
-        int steps = args.length > 2 ? Integer.parseInt(args[2]) : 600000;
+        int steps = args.length > 2 ? Integer.parseInt(args[2]) : 60000;
         int threads = args.length > 3 ? Integer.parseInt(args[3]) : 2;
+        Variant variant = args.length > 4 ? Variant.valueOf(args[4]) : Variant.FULL_MODEL;
+        
         ExecutorService executor = Executors.newFixedThreadPool(threads);
         List<Callable<Void>> runs = new LinkedList<Callable<Void>>();
         for (int i = 0; i < sims; ++i) {
             final String id = name + i;
             runs.add(() -> {
-                SignalSelectionCli cli = new SignalSelectionCli(id, steps);
+                SignalSelectionCli cli = new SignalSelectionCli(id, steps, variant);
                 cli.run();
                 cli.saveToCsv();
                 return null;
@@ -51,11 +76,12 @@ public class SignalSelectionCli implements SimulationView {
     private int timesteps = 10000;
     private long startTime;
     
-    public SignalSelectionCli(String id, int timesteps) {
+    public SignalSelectionCli(String id, int timesteps, Variant variant) {
         this.id = id;
         this.timesteps = timesteps;
         System.out.println("Start: " + id + " for " + (timesteps / 1000.0) + "s");
         simulation = new SignalSelectionNetwork(this);
+        Variant.apply(simulation, variant);
     }
     
     public int getStepsBetweenView() {

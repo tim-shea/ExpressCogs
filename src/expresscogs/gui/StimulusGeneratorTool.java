@@ -1,6 +1,6 @@
 package expresscogs.gui;
 
-import expresscogs.network.ContinuousStimulusGenerator;
+import expresscogs.network.TopologicalStimulusGenerator;
 import expresscogs.utility.ViewUtility;
 import javafx.geometry.Insets;
 import javafx.scene.control.Slider;
@@ -9,10 +9,10 @@ import javafx.scene.control.ToggleButton;
 import javafx.scene.layout.VBox;
 
 public class StimulusGeneratorTool extends TitledPane {
-    private ContinuousStimulusGenerator generator;
+    private TopologicalStimulusGenerator generator;
     private VBox controls;
     
-    public StimulusGeneratorTool(ContinuousStimulusGenerator generator) {
+    public StimulusGeneratorTool(TopologicalStimulusGenerator generator) {
         this.generator = generator;
         this.setAnimated(false);
         setText("Stimulus Generator");

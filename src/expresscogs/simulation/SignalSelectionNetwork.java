@@ -36,7 +36,7 @@ public class SignalSelectionNetwork extends Simulation {
     private SynapseGroupTopology narrow = new NeighborhoodTopology(0.1, 0.05);
     private SynapseGroupTopology wide = new NeighborhoodTopology(0.1, 0.5);
     private double weightScale = 1e-4;
-    private ContinuousStimulusGenerator thlInput;
+    private TopologicalStimulusGenerator thlInput;
     
     // Neuron groups
     private NeuronGroup thl;
@@ -59,7 +59,7 @@ public class SignalSelectionNetwork extends Simulation {
         network = new Network();
         
         // Create the neuron groups and add them to the network
-        thlInput = new ContinuousStimulusGenerator();
+        thlInput = new TopologicalStimulusGenerator();
         thl = NeuronFactory.createLifExcitatory("THL", groupSize, thlInput);
         ctx = NeuronFactory.createLifExcitatory("CTX", groupSize, highBackgroundInput);
         str = NeuronFactory.createLifInhibitory("STR", groupSize, lowBackgroundInput);
@@ -136,7 +136,7 @@ public class SignalSelectionNetwork extends Simulation {
         return network;
     }
     
-    public ContinuousStimulusGenerator getInputGenerator() {
+    public TopologicalStimulusGenerator getInputGenerator() {
         return thlInput;
     }
     

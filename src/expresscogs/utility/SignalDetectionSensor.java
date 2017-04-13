@@ -3,17 +3,17 @@ package expresscogs.utility;
 import org.jblas.DoubleMatrix;
 import org.jblas.MatrixFunctions;
 
-import expresscogs.network.ContinuousStimulusGenerator;
+import expresscogs.network.TopologicalStimulusGenerator;
 import expresscogs.network.NeuronGroup;
 
 public class SignalDetectionSensor {
     private NeuronGroup neurons;
-    private ContinuousStimulusGenerator generator;
+    private TopologicalStimulusGenerator generator;
     private double signalStrength;
     private double noiseStrength;
     private double frequency = 1000;
     
-    public SignalDetectionSensor(NeuronGroup neurons, ContinuousStimulusGenerator generator) {
+    public SignalDetectionSensor(NeuronGroup neurons, TopologicalStimulusGenerator generator) {
         this.neurons = neurons;
         this.generator = generator;
     }

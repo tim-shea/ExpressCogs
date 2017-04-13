@@ -3,11 +3,22 @@ package expresscogs.network;
 import org.jblas.DoubleMatrix;
 
 public interface InputGenerator {
-    public static InputGenerator NullGenerator = new InputGenerator() {
-        public DoubleMatrix generate(NeuronGroup neurons) {
-            return DoubleMatrix.zeros(neurons.getSize());
-        }
-    };
+    public static InputGenerator createNullGenerator() {
+        return new InputGenerator() {
+            private DoubleMatrix zeros;
+            
+            @Override
+            public void setNeuronGroup(NeuronGroup neurons) {
+                zeros = DoubleMatrix.zeros(neurons.getSize());
+            }
+            
+            @Override
+            public DoubleMatrix generate() {
+                return zeros;
+            }
+        };
+    }
     
-    DoubleMatrix generate(NeuronGroup neurons);
+    void setNeuronGroup(NeuronGroup neurons);
+    DoubleMatrix generate();
 }

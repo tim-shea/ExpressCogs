@@ -75,7 +75,7 @@ public class LifNeuronGroup implements NeuronGroup {
         v.put(spk, vRest);
         gE.put(spk, 0);
         gI.put(spk, 0);
-        i = generator.generate(this);
+        i = generator.generate();
         gE.muli(1 - gEDecay);
         gI.muli(1 - gIDecay);
         for (SynapseGroup synapses : dendriticSynapseGroups) {

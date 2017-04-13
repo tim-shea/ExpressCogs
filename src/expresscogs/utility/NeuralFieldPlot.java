@@ -2,14 +2,18 @@ package expresscogs.utility;
 
 public class NeuralFieldPlot extends BufferedPlot {
     private NeuralFieldSensor sensor;
-    private BufferedDataSeries series;
+    private BufferedDataSeries fieldSeries;
+    private BufferedDataSeries meanSeries;
     
     public NeuralFieldPlot(NeuralFieldSensor sensor) {
         createLine();
         this.sensor = sensor;
-        series = addSeries("Neural Field");
-        series.setMaxLength(sensor.getPosition().length);
-        setAutoRanging(false, true);
+        fieldSeries = addSeries("Neural Field");
+        fieldSeries.setMaxLength(sensor.getPosition().length);
+        meanSeries = addSeries("Mean Firing Rate");
+        meanSeries.setMaxLength(2);
+        setAutoRanging(false, false);
+        setYLimits(0, 1000);
         setXLimits(0, 1);
     }
     
@@ -18,7 +22,10 @@ public class NeuralFieldPlot extends BufferedPlot {
         if (!isEnabled()) {
             return;
         }
-        series.bufferPoints(sensor.getPosition().data, sensor.getActivity().data);
-        series.addBuffered();
+        fieldSeries.bufferPoints(sensor.getPosition().data, sensor.getActivity().data);
+        fieldSeries.addBuffered();
+        double mean = sensor.getActivity().mean();
+        meanSeries.bufferPoints(new double[] { 0, 1 }, new double[] { mean, mean });
+        meanSeries.addBuffered();
     }
 }

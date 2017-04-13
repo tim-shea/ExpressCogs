@@ -77,7 +77,7 @@ public class AdExNeuronGroup implements NeuronGroup {
         w.put(spk, w.get(spk).add(b));
         gE.put(spk, 0);
         gI.put(spk, 0);
-        i = generator.generate(this);
+        i = generator.generate();
         gE.muli(gEDecay);
         gI.muli(gIDecay);
         for (SynapseGroup synapses : dendriticSynapseGroups) {

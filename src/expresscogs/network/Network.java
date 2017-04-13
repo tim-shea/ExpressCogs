@@ -81,6 +81,19 @@ public class Network {
         return synapseGroups;
     }
     
+    public SynapseGroup getSynapseGroup(int index) {
+        return synapseGroups.get(index);
+    }
+    
+    public SynapseGroup getSynapseGroup(String name) {
+        for (SynapseGroup synapses : synapseGroups) {
+            if (synapses.getName().equals(name)) {
+                return synapses;
+            }
+        }
+        return null;
+    }
+    
     public void update(int step) {
         this.step = step;
         if (executor == null) {
