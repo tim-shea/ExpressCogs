@@ -1,8 +1,10 @@
 package expresscogs.gui;
 
 import expresscogs.network.TopologicalStimulusGenerator;
+import expresscogs.network.TopologicalStimulusGenerator.Shape;
 import expresscogs.utility.ViewUtility;
 import javafx.geometry.Insets;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Slider;
 import javafx.scene.control.TitledPane;
 import javafx.scene.control.ToggleButton;
@@ -23,6 +25,13 @@ public class StimulusGeneratorTool extends TitledPane {
     }
     
     private void createSliders() {
+        ComboBox<Shape> shapeCombo = new ComboBox<Shape>();
+        shapeCombo.getItems().addAll(TopologicalStimulusGenerator.Shape.values());
+        shapeCombo.valueProperty().addListener((listener, oldValue, newValue) -> {
+            generator.setShape(newValue);
+        });
+        shapeCombo.setValue(generator.getShape());
+        controls.getChildren().add(shapeCombo);
         Slider snrSlider = ViewUtility.createSlider(controls, "Signal-to-Noise Ratio", generator.getSignalToNoiseRatio(),
                 0, 4, (observable, oldValue, newValue) -> {
             generator.setSignalToNoiseRatio(newValue.doubleValue());

@@ -65,6 +65,17 @@ public class TopologicalStimulusGenerator implements InputGenerator {
         generateStimulus();
     }
     
+    /** Return the shape of the stimulus. */
+    public Shape getShape() {
+        return shape;
+    }
+    
+    /** Assign the shape of the stimulus. */
+    public void setShape(Shape value) {
+        shape = value;
+        generateStimulus();
+    }
+    
     /** Return the scale of random noise added to the stimulus each update. */
     public double getNoise() {
         return noise;

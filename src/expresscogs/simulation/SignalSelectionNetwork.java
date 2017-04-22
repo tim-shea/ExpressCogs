@@ -92,7 +92,7 @@ public class SignalSelectionNetwork extends Simulation {
         while (spikeSample.sum() < 25) {
             spikeSample.put(Random.nextInt(stn.getSize()), 1);
         }
-        fieldSensor = new NeuralFieldSensor(ctx);
+        fieldSensor = new NeuralFieldSensor(thl);
         signalSensor = new SignalDetectionSensor(ctx, thlInput);
     }
     
