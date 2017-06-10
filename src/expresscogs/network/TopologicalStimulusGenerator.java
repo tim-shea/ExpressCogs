@@ -60,6 +60,7 @@ public class TopologicalStimulusGenerator implements InputGenerator {
     private int interval = 2000;
     private int step;
     
+    @Override
     public void setNeuronGroup(NeuronGroup neurons) {
         neuronPositions = neurons.getXPosition();
         generateStimulus();

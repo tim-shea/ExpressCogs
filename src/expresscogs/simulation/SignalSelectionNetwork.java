@@ -36,7 +36,8 @@ public class SignalSelectionNetwork extends Simulation {
     private SynapseGroupTopology narrow = new NeighborhoodTopology(0.1, 0.05);
     private SynapseGroupTopology wide = new NeighborhoodTopology(0.1, 0.5);
     private double weightScale = 1e-4;
-    private TopologicalStimulusGenerator thlInput;
+    private TopologicalStimulusGenerator stimulusA;
+    private TopologicalStimulusGenerator stimulusB;
     
     // Neuron groups
     private NeuronGroup thl;
@@ -59,8 +60,9 @@ public class SignalSelectionNetwork extends Simulation {
         network = new Network();
         
         // Create the neuron groups and add them to the network
-        thlInput = new TopologicalStimulusGenerator();
-        thl = NeuronFactory.createLifExcitatory("THL", groupSize, thlInput);
+        stimulusA = new TopologicalStimulusGenerator();
+        stimulusB = new TopologicalStimulusGenerator();
+        thl = NeuronFactory.createLifExcitatory("THL", groupSize, new AdditiveInputGenerator(stimulusA, stimulusB));
         ctx = NeuronFactory.createLifExcitatory("CTX", groupSize, highBackgroundInput);
         str = NeuronFactory.createLifInhibitory("STR", groupSize, lowBackgroundInput);
         st2 = NeuronFactory.createLifInhibitory("ST2", groupSize, lowBackgroundInput);
@@ -79,7 +81,7 @@ public class SignalSelectionNetwork extends Simulation {
         network.addSynapseGroups(thlCtx, ctxStr, ctxStn, strGpi, stnGpi, gpiThl);
         
         // Setup the control pathway synapse groups
-        SynapseGroup ctxSt2 = SynapseFactory.connectWithDelay(ctx, st2, narrow, 0.5 * weightScale);
+        SynapseGroup ctxSt2 = SynapseFactory.connectWithDelay(ctx, st2, wide, 0.5 * weightScale);
         SynapseGroup st2Gpe = SynapseFactory.connectWithDelay(st2, gpe, narrow, 0.5 * weightScale);
         SynapseGroup stnGpe = SynapseFactory.connectWithDelay(stn, gpe, wide, 1 * weightScale);
         SynapseGroup gpeStn = SynapseFactory.connectWithDelay(gpe, stn, narrow, 0.5 * weightScale);
@@ -92,8 +94,8 @@ public class SignalSelectionNetwork extends Simulation {
         while (spikeSample.sum() < 25) {
             spikeSample.put(Random.nextInt(stn.getSize()), 1);
         }
-        fieldSensor = new NeuralFieldSensor(thl);
-        signalSensor = new SignalDetectionSensor(ctx, thlInput);
+        fieldSensor = new NeuralFieldSensor(ctx);
+        signalSensor = new SignalDetectionSensor(ctx, stimulusA);
     }
     
     @Override
@@ -117,8 +119,8 @@ public class SignalSelectionNetwork extends Simulation {
         fieldSensor.update(t);
         signalSensor.update(t);
         record.put(getStep(), 0, getTime());
-        record.put(getStep(), 1, thlInput.getSignalToNoiseRatio());
-        record.put(getStep(), 2, thlInput.getPosition());
+        record.put(getStep(), 1, stimulusA.getSignalToNoiseRatio());
+        record.put(getStep(), 2, stimulusA.getPosition());
         record.put(getStep(), 3, thl.getSpikes().sum());
         record.put(getStep(), 4, ctx.getSpikes().sum());
         record.put(getStep(), 5, str.getSpikes().sum());
@@ -136,8 +138,12 @@ public class SignalSelectionNetwork extends Simulation {
         return network;
     }
     
-    public TopologicalStimulusGenerator getInputGenerator() {
-        return thlInput;
+    public TopologicalStimulusGenerator getStimulusA() {
+        return stimulusA;
+    }
+    
+    public TopologicalStimulusGenerator getStimulusB() {
+        return stimulusB;
     }
     
     public double getWeightScale() {

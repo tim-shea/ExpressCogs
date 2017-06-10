@@ -56,7 +56,8 @@ public class SignalSelectionApplication extends Application implements Simulatio
         stage.setScene(scene);
         
         SimulationTool simulationTool = new SimulationTool(simulation, this);
-        StimulusGeneratorTool stimulusTool = new StimulusGeneratorTool(simulation.getInputGenerator());
+        StimulusGeneratorTool stimulusATool = new StimulusGeneratorTool(simulation.getStimulusA());
+        StimulusGeneratorTool stimulusBTool = new StimulusGeneratorTool(simulation.getStimulusB());
         SynapseScalingTool synapseTool = new SynapseScalingTool(simulation.getNetwork(), 0, simulation.getWeightScale() * 2);
         
         HBox hbox = new HBox();
@@ -67,7 +68,7 @@ public class SignalSelectionApplication extends Application implements Simulatio
         toolboxScrollPane.setHbarPolicy(ScrollBarPolicy.NEVER);
         VBox toolbox = new VBox();
         ResizingSeparator toolSeparator = new ResizingSeparator(toolboxScrollPane, Orientation.VERTICAL);
-        toolbox.getChildren().addAll(simulationTool, stimulusTool, synapseTool);
+        toolbox.getChildren().addAll(simulationTool, stimulusATool, stimulusBTool, synapseTool);
         hbox.getChildren().addAll(toolboxScrollPane, toolSeparator);
         toolboxScrollPane.setContent(toolbox);
         toolboxScrollPane.setFitToWidth(true);
