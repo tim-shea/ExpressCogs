@@ -30,14 +30,14 @@ import expresscogs.utility.SignalDetectionSensor;
  */
 public class SignalSelectionNetwork extends Simulation {
     private Network network;
-    private double lowBackgroundInput = 0.0e-3;
-    private double highBackgroundInput = 0.2e-3;
+    private double lowBackgroundInput = 0.1e-3;
+    private double highBackgroundInput = 0.25e-3;
     private int groupSize = 1000;
     private SynapseGroupTopology narrow = new NeighborhoodTopology(0.1, 0.05);
     private SynapseGroupTopology wide = new NeighborhoodTopology(0.1, 0.5);
     private double weightScale = 1e-4;
-    private TopologicalStimulusGenerator stimulusA;
-    private TopologicalStimulusGenerator stimulusB;
+    private int synapseDelay = 10;
+    private TopologicalStimulusGenerator stimulus;
     
     // Neuron groups
     private NeuronGroup thl;
@@ -60,32 +60,31 @@ public class SignalSelectionNetwork extends Simulation {
         network = new Network();
         
         // Create the neuron groups and add them to the network
-        stimulusA = new TopologicalStimulusGenerator();
-        stimulusB = new TopologicalStimulusGenerator();
-        thl = NeuronFactory.createLifExcitatory("THL", groupSize, new AdditiveInputGenerator(stimulusA, stimulusB));
+        stimulus = new TopologicalStimulusGenerator();
+        thl = NeuronFactory.createLifExcitatory("THL", groupSize, stimulus);
         ctx = NeuronFactory.createLifExcitatory("CTX", groupSize, highBackgroundInput);
-        str = NeuronFactory.createLifInhibitory("STR", groupSize, lowBackgroundInput);
-        st2 = NeuronFactory.createLifInhibitory("ST2", groupSize, lowBackgroundInput);
-        stn = NeuronFactory.createLifExcitatory("STN", groupSize, lowBackgroundInput);
-        gpi = NeuronFactory.createLifInhibitory("GPI", groupSize / 4, lowBackgroundInput);
+        str = NeuronFactory.createLifInhibitory("STR", groupSize, highBackgroundInput);
+        st2 = NeuronFactory.createLifInhibitory("ST2", groupSize, highBackgroundInput);
+        stn = NeuronFactory.createLifExcitatory("STN", groupSize, highBackgroundInput);
+        gpi = NeuronFactory.createLifInhibitory("GPI", groupSize / 4, highBackgroundInput);
         gpe = NeuronFactory.createLifInhibitory("GPE", groupSize / 4, highBackgroundInput);
         network.addNeuronGroups(thl, ctx, str, st2, stn, gpi, gpe);
         
         // Setup the selection pathway synapse groups
-        SynapseGroup thlCtx = SynapseFactory.connectWithDelay(thl, ctx, narrow, 1 * weightScale);
-        SynapseGroup ctxStr = SynapseFactory.connectWithDelay(ctx, str, narrow, 0.5 * weightScale);
-        SynapseGroup ctxStn = SynapseFactory.connectWithDelay(ctx, stn, wide, 1 * weightScale);
-        SynapseGroup strGpi = SynapseFactory.connectWithDelay(str, gpi, narrow, 0.5 * weightScale);
-        SynapseGroup stnGpi = SynapseFactory.connectWithDelay(stn, gpi, wide, 1 * weightScale);
-        SynapseGroup gpiThl = SynapseFactory.connectWithDelay(gpi, thl, narrow, 1 * weightScale);
+        SynapseGroup thlCtx = SynapseFactory.connectWithDelay(thl, ctx, narrow, 1 * weightScale, synapseDelay);
+        SynapseGroup ctxStr = SynapseFactory.connectWithDelay(ctx, str, narrow, 0.5 * weightScale, synapseDelay);
+        SynapseGroup ctxStn = SynapseFactory.connectWithDelay(ctx, stn, wide, 1 * weightScale, synapseDelay);
+        SynapseGroup strGpi = SynapseFactory.connectWithDelay(str, gpi, narrow, 0.5 * weightScale, synapseDelay);
+        SynapseGroup stnGpi = SynapseFactory.connectWithDelay(stn, gpi, wide, 1 * weightScale, synapseDelay);
+        SynapseGroup gpiThl = SynapseFactory.connectWithDelay(gpi, thl, narrow, 1 * weightScale, synapseDelay);
         network.addSynapseGroups(thlCtx, ctxStr, ctxStn, strGpi, stnGpi, gpiThl);
         
         // Setup the control pathway synapse groups
-        SynapseGroup ctxSt2 = SynapseFactory.connectWithDelay(ctx, st2, wide, 0.5 * weightScale);
-        SynapseGroup st2Gpe = SynapseFactory.connectWithDelay(st2, gpe, narrow, 0.5 * weightScale);
-        SynapseGroup stnGpe = SynapseFactory.connectWithDelay(stn, gpe, wide, 1 * weightScale);
-        SynapseGroup gpeStn = SynapseFactory.connectWithDelay(gpe, stn, narrow, 0.5 * weightScale);
-        SynapseGroup gpeGpi = SynapseFactory.connectWithDelay(gpe, gpi, narrow, 0.5 * weightScale);
+        SynapseGroup ctxSt2 = SynapseFactory.connectWithDelay(ctx, st2, narrow, 0.5 * weightScale, synapseDelay);
+        SynapseGroup st2Gpe = SynapseFactory.connectWithDelay(st2, gpe, narrow, 0.5 * weightScale, synapseDelay);
+        SynapseGroup stnGpe = SynapseFactory.connectWithDelay(stn, gpe, wide, 1 * weightScale, synapseDelay);
+        SynapseGroup gpeStn = SynapseFactory.connectWithDelay(gpe, stn, narrow, 0.5 * weightScale, synapseDelay);
+        SynapseGroup gpeGpi = SynapseFactory.connectWithDelay(gpe, gpi, narrow, 0.5 * weightScale, synapseDelay);
         network.addSynapseGroups(ctxSt2, st2Gpe, stnGpe, gpeStn, gpeGpi);
         
         // Create the sensors
@@ -95,7 +94,7 @@ public class SignalSelectionNetwork extends Simulation {
             spikeSample.put(Random.nextInt(stn.getSize()), 1);
         }
         fieldSensor = new NeuralFieldSensor(ctx);
-        signalSensor = new SignalDetectionSensor(ctx, stimulusA);
+        signalSensor = new SignalDetectionSensor(ctx, stimulus);
     }
     
     @Override
@@ -119,8 +118,8 @@ public class SignalSelectionNetwork extends Simulation {
         fieldSensor.update(t);
         signalSensor.update(t);
         record.put(getStep(), 0, getTime());
-        record.put(getStep(), 1, stimulusA.getSignalToNoiseRatio());
-        record.put(getStep(), 2, stimulusA.getPosition());
+        record.put(getStep(), 1, stimulus.getSignalToNoiseRatio());
+        record.put(getStep(), 2, stimulus.getPosition());
         record.put(getStep(), 3, thl.getSpikes().sum());
         record.put(getStep(), 4, ctx.getSpikes().sum());
         record.put(getStep(), 5, str.getSpikes().sum());
@@ -138,12 +137,8 @@ public class SignalSelectionNetwork extends Simulation {
         return network;
     }
     
-    public TopologicalStimulusGenerator getStimulusA() {
-        return stimulusA;
-    }
-    
-    public TopologicalStimulusGenerator getStimulusB() {
-        return stimulusB;
+    public TopologicalStimulusGenerator getStimulus() {
+        return stimulus;
     }
     
     public double getWeightScale() {

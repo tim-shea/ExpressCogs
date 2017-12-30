@@ -36,10 +36,12 @@ public class FixedDelaySynapseGroup implements SynapseGroup {
     @Override
     public void update(int step) {
         DoubleMatrix spikes = source.getSpikes();
+        int i = (step + delay) % delay;
         if (spikes.sum() > 0) {
             DoubleMatrix w = weights.getRows(spikes).mul(weightScale);
-            int i = (step + delay) % delay;
             conductances.putColumn(i, w.columnSums());
+        } else {
+            conductances.putColumn(i, DoubleMatrix.zeros(conductances.rows));
         }
     }
     

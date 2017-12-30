@@ -21,6 +21,7 @@ public class LocalFieldPotentialPlot extends BufferedPlot {
     private DoubleMatrix lfpFilter;
     private DoubleMatrix lfpData;
     private int step = 0;
+    private boolean applyFilter = false;
     
     public LocalFieldPotentialPlot(LocalFieldPotentialSensor sensor) {
         createLine();
@@ -39,11 +40,14 @@ public class LocalFieldPotentialPlot extends BufferedPlot {
         if (!isEnabled()) {
             return;
         }
-        lfpData.put(new IntervalRange(0, WINDOW_LENGTH - 1), new PointRange(0),
+        if (applyFilter) {
+            lfpData.put(new IntervalRange(0, WINDOW_LENGTH - 1), new PointRange(0),
                 lfpData.get(new IntervalRange(1, WINDOW_LENGTH), new PointRange(0)));
-        lfpData.put(WINDOW_LENGTH - 1, sensor.getLfp());
-        double filteredLfp = lfpData.dot(lfpFilter);
-        series.bufferPoint(t - (1.0 / frequency) * (WINDOW_LENGTH / 2), filteredLfp);
+            lfpData.put(WINDOW_LENGTH - 1, sensor.getLfp());
+            double filteredLfp = lfpData.dot(lfpFilter);
+            series.bufferPoint(t - (1.0 / frequency) * (WINDOW_LENGTH / 2), filteredLfp);
+        }
+        series.bufferPoint(t, sensor.getLfp());
     }
     
     @Override

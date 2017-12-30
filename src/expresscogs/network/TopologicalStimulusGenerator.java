@@ -41,7 +41,7 @@ public class TopologicalStimulusGenerator implements InputGenerator {
                 DoubleMatrix stimulus = x.sub(center);
                 stimulus.muli(stimulus).divi(-quarterWidthSqr);
                 MatrixFunctions.expi(stimulus);
-                stimulus.muli(height / stimulus.max());
+                stimulus.muli(height);
                 return stimulus;
             }
         };
@@ -181,11 +181,13 @@ public class TopologicalStimulusGenerator implements InputGenerator {
         }
         stimulus = shape.generate(neuronPositions, position, width, intensity);
         stimulus.addi(noise);
-        DoubleMatrix leftEdge = neuronPositions.lt(0.2);
-        DoubleMatrix leftFalloff = neuronPositions.get(leftEdge).add(0.8);
-        stimulus.put(leftEdge, stimulus.get(leftEdge).mul(leftFalloff));
-        DoubleMatrix rightEdge = neuronPositions.gt(0.8);
-        DoubleMatrix rightFalloff = neuronPositions.get(rightEdge).rsub(1.0).add(0.8);
-        stimulus.put(rightEdge, stimulus.get(rightEdge).mul(rightFalloff));
+        stimulus.put(neuronPositions.lt(0.05), 0);
+        stimulus.put(neuronPositions.gt(0.95), 0);
+        //DoubleMatrix leftEdge = neuronPositions.lt(0.2);
+        //DoubleMatrix leftFalloff = neuronPositions.get(leftEdge).add(0.8);
+        //stimulus.put(leftEdge, stimulus.get(leftEdge).mul(leftFalloff));
+        //DoubleMatrix rightEdge = neuronPositions.gt(0.8);
+        //DoubleMatrix rightFalloff = neuronPositions.get(rightEdge).rsub(1.0).add(0.8);
+        //stimulus.put(rightEdge, stimulus.get(rightEdge).mul(rightFalloff));
     }
 }

@@ -1,15 +1,13 @@
 package expresscogs.simulation;
 
+import expresscogs.gui.NoiseGeneratorTool;
 import expresscogs.gui.ResizingSeparator;
 import expresscogs.gui.SimulationTool;
 import expresscogs.gui.SimulationView;
-import expresscogs.gui.StimulusGeneratorTool;
 import expresscogs.gui.SynapseScalingTool;
 import expresscogs.network.Network;
 import expresscogs.utility.BufferedPlot;
 import expresscogs.utility.LocalFieldPotentialPlot;
-import expresscogs.utility.NeuralFieldPlot;
-import expresscogs.utility.SignalSelectionPlot;
 import expresscogs.utility.SpikeRasterPlot;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -25,24 +23,22 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
-public class SignalSelectionApplication extends Application implements SimulationView {
+public class RecurrentApplication extends Application implements SimulationView {
     public static void main(String[] args) {
-        SignalSelectionApplication.launch(args);
+        RecurrentApplication.launch(args);
     }
     
-    private SignalSelectionNetwork simulation;
+    private RecurrentNetwork simulation;
     private int stepsBetweenView = 20;
     
     // Charts for visualization
     private SpikeRasterPlot rasterPlot;
-    private NeuralFieldPlot fieldPlot;
     private LocalFieldPotentialPlot lfpPlot;
-    private SignalSelectionPlot signalPlot;
     
     @Override
     public void start(Stage stage) throws Exception {
         stage.setTitle("ExpressCogs");
-        simulation = new SignalSelectionNetwork(this);
+        simulation = new RecurrentNetwork(this);
         createVisualization(stage);
     }
     
@@ -56,7 +52,8 @@ public class SignalSelectionApplication extends Application implements Simulatio
         stage.setScene(scene);
         
         SimulationTool simulationTool = new SimulationTool(simulation, this);
-        StimulusGeneratorTool stimulusTool = new StimulusGeneratorTool(simulation.getStimulus());
+        NoiseGeneratorTool excNoiseTool = new NoiseGeneratorTool(simulation.getExcNoise());
+        NoiseGeneratorTool inhNoiseTool = new NoiseGeneratorTool(simulation.getInhNoise());
         SynapseScalingTool synapseTool = new SynapseScalingTool(simulation.getNetwork(), 0, simulation.getWeightScale() * 2);
         
         HBox hbox = new HBox();
@@ -67,7 +64,7 @@ public class SignalSelectionApplication extends Application implements Simulatio
         toolboxScrollPane.setHbarPolicy(ScrollBarPolicy.NEVER);
         VBox toolbox = new VBox();
         ResizingSeparator toolSeparator = new ResizingSeparator(toolboxScrollPane, Orientation.VERTICAL);
-        toolbox.getChildren().addAll(simulationTool, stimulusTool, synapseTool);
+        toolbox.getChildren().addAll(simulationTool, excNoiseTool, inhNoiseTool, synapseTool);
         hbox.getChildren().addAll(toolboxScrollPane, toolSeparator);
         toolboxScrollPane.setContent(toolbox);
         toolboxScrollPane.setFitToWidth(true);
@@ -87,14 +84,8 @@ public class SignalSelectionApplication extends Application implements Simulatio
         rasterPlot = new SpikeRasterPlot(simulation.getNetwork(), 100);
         addPlot(plotContainer, rasterPlot, "Spike Raster Plot", true);
         
-        fieldPlot = new NeuralFieldPlot(simulation.getFieldSensor());
-        addPlot(plotContainer, fieldPlot, "Neural Field Plot", true);
-        
         lfpPlot = new LocalFieldPotentialPlot(simulation.getLfpSensor());
         addPlot(plotContainer, lfpPlot, "Local Field Potential Plot", true);
-        
-        signalPlot = new SignalSelectionPlot(simulation.getSignalSensor());
-        addPlot(plotContainer, signalPlot, "Signal Selection Plot", false);
         
         stage.setOnCloseRequest(event -> {
             simulation.stop();
@@ -138,9 +129,7 @@ public class SignalSelectionApplication extends Application implements Simulatio
     private void updateBuffers() {
         final double t = simulation.getTime();
         rasterPlot.updateBuffers(t);
-        fieldPlot.updateBuffers(t);
         lfpPlot.updateBuffers(t);
-        signalPlot.updateBuffers(t);
     }
     
     private void updatePlots() {
@@ -148,9 +137,7 @@ public class SignalSelectionApplication extends Application implements Simulatio
         simulation.sync();
         Platform.runLater(() -> {
             rasterPlot.updatePlot(t);
-            fieldPlot.updatePlot(t);
             lfpPlot.updatePlot(t);
-            signalPlot.updatePlot(t);
             simulation.sync();
         });
     }

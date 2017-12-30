@@ -1,8 +1,6 @@
 package expresscogs.network.synapses;
 
 import org.jblas.DoubleMatrix;
-import org.jblas.MatrixFunctions;
-
 import expresscogs.network.NeuronGroup;
 
 /**
@@ -12,7 +10,6 @@ import expresscogs.network.NeuronGroup;
 public final class SynapseFactory {
     public static double minWeight = 0.25;
     public static double maxWeight = 1.0;
-    public static int fixedDelay = 10;
     
     public static SynapseGroup connect(String name, NeuronGroup source, NeuronGroup target, SynapseGroupTopology topology, double weightScale) {
         DoubleMatrix connections = topology.generateConnections(source, target);
@@ -27,18 +24,17 @@ public final class SynapseFactory {
         return connect(name, source, target, topology, weightScale);
     }
     
-    public static SynapseGroup connectWithDelay(String name, NeuronGroup source, NeuronGroup target, SynapseGroupTopology topology, double weightScale) {
+    public static SynapseGroup connectWithDelay(String name, NeuronGroup source, NeuronGroup target, SynapseGroupTopology topology, double weightScale, int delay) {
         DoubleMatrix connections = topology.generateConnections(source, target);
-        DoubleMatrix index = SynapseGroupTopology.flattenMatrix(connections);
-        FixedDelaySynapseGroup synapses = new FixedDelaySynapseGroup(name, source, target, index, fixedDelay);
+        FixedDelaySynapseGroup synapses = new FixedDelaySynapseGroup(name, source, target, connections, delay);
         SynapseFactory.randomizeWeights(synapses, minWeight, maxWeight);
         synapses.setWeightScale(weightScale);
         return synapses;
     }
     
-    public static SynapseGroup connectWithDelay(NeuronGroup source, NeuronGroup target, SynapseGroupTopology topology, double weightScale) {
+    public static SynapseGroup connectWithDelay(NeuronGroup source, NeuronGroup target, SynapseGroupTopology topology, double weightScale, int delay) {
         String name = source.getName() + "_" + target.getName();
-        return connect(name, source, target, topology, weightScale);
+        return connectWithDelay(name, source, target, topology, weightScale, delay);
     }
     
     private static void randomizeWeights(SynapseGroup synapses, double minWeight, double maxWeight) {
